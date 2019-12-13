@@ -46,6 +46,7 @@ export default class MainPage extends React.Component {
 
     this.activateFinder = this.activateFinder.bind(this);
     this.addServer = this.addServer.bind(this);
+    this.addDeeplinkServer = this.addDeeplinkServer.bind(this);
     this.closeFinder = this.closeFinder.bind(this);
     this.focusOnWebView = this.focusOnWebView.bind(this);
     this.handleLogin = this.handleLogin.bind(this);
@@ -252,6 +253,8 @@ export default class MainPage extends React.Component {
           this.handleSelect(parsedDeeplink.teamIndex);
         }
         self.refs[`mattermostView${parsedDeeplink.teamIndex}`].handleDeepLink(parsedDeeplink.path);
+      } else {
+        this.addDeeplinkServer(deepLinkUrl);
       }
     });
 
@@ -380,6 +383,19 @@ export default class MainPage extends React.Component {
     });
   }
 
+  addDeeplinkServer(deepLinkUrl) {
+    const parsedUrl = url.parse(deepLinkUrl);
+    this.setState({
+      showNewTeamModal: true,
+      autofillTeam: {
+        url: parsedUrl.host,
+      },
+      autofillCallback: () => {
+        remote.getCurrentWindow().webContents.send('protocol-deeplink', deepLinkUrl);
+      },
+    });
+  }
+
   focusOnWebView(e) {
     if (e.target.className !== 'finder-input') {
       this.refs[`mattermostView${this.state.key}`].focusOnWebView();
@@ -483,17 +499,26 @@ export default class MainPage extends React.Component {
         onClose={() => {
           this.setState({
             showNewTeamModal: false,
+            autofillTeam: null,
+            autofillCallback: null,
           });
         }}
         onSave={(newTeam) => {
           this.props.teams.push(newTeam);
+          const autofillCallback = this.state.autofillCallback;
           this.setState({
             showNewTeamModal: false,
             key: this.props.teams.length - 1,
+            autofillTeam: null,
+            autofillCallback: null,
           });
           this.render();
           this.props.onTeamConfigChange(this.props.teams);
+          if (autofillCallback) {
+            autofillCallback();
+          }
         }}
+        team={this.state.autofillTeam}
       />
     );
     return (
