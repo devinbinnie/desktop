@@ -41,6 +41,7 @@ const scheme = protocols && protocols[0] && protocols[0].schemes && protocols[0]
 
 const generateWillNavigate = (getServersFunction: () => TeamWithTabs[]) => {
     return (event: Event & {sender: WebContents}, url: string) => {
+        log.info('will-navigate', event.sender.id, url);
         const contentID = event.sender.id;
         const parsedURL = urlUtils.parseURL(url)!;
         const configServers = getServersFunction();
@@ -67,6 +68,7 @@ const generateWillNavigate = (getServersFunction: () => TeamWithTabs[]) => {
 
 const generateDidStartNavigation = (getServersFunction: () => TeamWithTabs[]) => {
     return (event: Event & {sender: WebContents}, url: string) => {
+        log.info('did-start-navigation', event.sender.id, url);
         const serverList = getServersFunction();
         const contentID = event.sender.id;
         const parsedURL = urlUtils.parseURL(url)!;
