@@ -48,16 +48,20 @@ const generateWillNavigate = (getServersFunction: () => TeamWithTabs[]) => {
         const server = urlUtils.getView(parsedURL, configServers);
 
         if (server && (urlUtils.isTeamUrl(server.url, parsedURL) || urlUtils.isAdminUrl(server.url, parsedURL) || isTrustedPopupWindow(event.sender))) {
+            log.info('allow for internal url', event.sender.id, url);
             return;
         }
 
         if (server && urlUtils.isCustomLoginURL(parsedURL, server, configServers)) {
+            log.info('allow for custom login url', event.sender.id, url);
             return;
         }
         if (parsedURL.protocol === 'mailto:') {
+            log.info('allow for mailto', event.sender.id, url);
             return;
         }
         if (customLogins[contentID].inProgress) {
+            log.info('allow for custom login in progress', event.sender.id, url);
             return;
         }
 
@@ -81,8 +85,10 @@ const generateDidStartNavigation = (getServersFunction: () => TeamWithTabs[]) =>
         const serverURL = urlUtils.parseURL(server?.url || '');
 
         if (server && urlUtils.isCustomLoginURL(parsedURL, server, serverList)) {
+            log.info('started custom login', contentID, serverURL?.toString(), parsedURL.toString());
             customLogins[contentID].inProgress = true;
         } else if (server && customLogins[contentID].inProgress && urlUtils.isInternalURL(serverURL || new URL(''), parsedURL)) {
+            log.info('ended custom login', contentID, serverURL?.toString(), parsedURL.toString());
             customLogins[contentID].inProgress = false;
         }
     };
