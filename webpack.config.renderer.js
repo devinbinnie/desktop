@@ -10,15 +10,18 @@ const path = require('path');
 
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const webpack = require('webpack');
 const {merge} = require('webpack-merge');
 
 const base = require('./webpack.config.base');
+
+const deps = require('./package.json').dependencies;
 
 const WEBSERVER_PORT = process.env.WEBSERVER_PORT ?? 9001;
 
 module.exports = merge(base, {
     entry: {
-        index: './src/renderer/index.tsx',
+        index: './src/renderer/index_bootstrap.ts',
         settings: './src/renderer/settings.tsx',
         dropdown: './src/renderer/dropdown.tsx',
         urlView: './src/renderer/modals/urlView/urlView.tsx',
@@ -36,6 +39,50 @@ module.exports = merge(base, {
         assetModuleFilename: '[name].[ext]',
     },
     plugins: [
+        new webpack.container.ModuleFederationPlugin({
+            name: 'index',
+            filename: 'remoteEntry.js',
+            remotes: {
+                mattermost_webapp: `mattermost_webapp@${path.resolve(__dirname, '../mattermost-webapp/dist/remoteEntry.js')}`,
+            },
+            shared: {
+                history: {
+                    singleton: true,
+                    eager: true,
+                    requiredVersion: deps.history,
+                },
+                react: {
+                    singleton: true,
+                    eager: true,
+                    requiredVersion: deps.react,
+                },
+                'react-dom': {
+                    singleton: true,
+                    eager: true,
+                    requiredVersion: deps['react-dom'],
+                },
+                'react-redux': {
+                    singleton: true,
+                    eager: true,
+                    requiredVersion: deps['react-redux'],
+                },
+                'react-router': {
+                    singleton: true,
+                    eager: true,
+                    requiredVersion: deps['react-router'],
+                },
+                'react-router-dom': {
+                    singleton: true,
+                    eager: true,
+                    requiredVersion: deps['react-router-dom'],
+                },
+                'utils/browser_history': {
+                    singleton: true,
+                    eager: true,
+                    import: './src/renderer/browser_history.tsx',
+                },
+            },
+        }),
         new HtmlWebpackPlugin({
             title: 'Mattermost Desktop App',
             template: 'src/renderer/index.html',
@@ -154,7 +201,6 @@ module.exports = merge(base, {
         __filename: false,
         __dirname: false,
     },
-    target: 'electron-renderer',
     devServer: {
         port: WEBSERVER_PORT,
     },
