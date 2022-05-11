@@ -11,6 +11,8 @@ import {Tab} from 'types/config';
 
 import {getTabDisplayName, getTabViewName, TabType, canCloseTab} from 'common/tabs/TabView';
 
+import '../css/components/TabBar.scss';
+
 type Props = {
     activeTabName?: string;
     activeServerName?: string;

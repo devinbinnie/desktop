@@ -2,8 +2,7 @@
 // Copyright (c) 2016-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'renderer/css/index.css';
+import 'renderer/css/index.scss';
 
 import React from 'react';
 import ReactDOM from 'react-dom';
@@ -121,18 +120,15 @@ class Root extends React.PureComponent<Record<string, never>, State> {
         }
 
         return (
-            <>
-                <MainPage
-                    teams={config.teams}
-                    lastActiveTeam={config.lastActiveTeam}
-                    moveTabs={this.moveTabs}
-                    openMenu={this.openMenu}
-                    darkMode={config.darkMode}
-                    appName={config.appName}
-                    useNativeWindow={config.useNativeWindow}
-                />
-                <MattermostApp/>
-            </>
+            <MainPage
+                teams={config.teams}
+                lastActiveTeam={config.lastActiveTeam}
+                moveTabs={this.moveTabs}
+                openMenu={this.openMenu}
+                darkMode={config.darkMode}
+                appName={config.appName}
+                useNativeWindow={config.useNativeWindow}
+            />
         );
     }
 }
@@ -146,5 +142,10 @@ window.ipcRenderer.invoke('get-app-version').then(({name, version}) => {
 ReactDOM.render(
     <Root/>,
     document.getElementById('app'),
+);
+
+ReactDOM.render(
+    <MattermostApp/>,
+    document.getElementById('root'),
 );
 
