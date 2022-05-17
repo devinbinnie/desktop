@@ -1,7 +1,7 @@
 // Copyright (c) 2016-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useEffect, useState} from 'react';
+import React from 'react';
 import {Provider} from 'react-redux';
 import {Router, Route} from 'react-router-dom';
 import {browserHistory} from 'utils/browser_history';
@@ -16,21 +16,26 @@ const MattermostRoot = (props: any) => (
 );
 MattermostRoot.displayName = 'Root';
 
-const MattermostApp = () => {
-    const [store, setStore] = useState();
+const updateWebsocket = (websocketURL: string) => {
+    const NativeWebSocket = window.WebSocket;
+    // eslint-disable-next-line func-names
+    window.WebSocket = function(url: string) {
+        return new NativeWebSocket(url.replace('file:///', websocketURL));
+    };
+};
+updateWebsocket('wss://home.sourcestorm.net/mattermost/');
 
-    useEffect(() => {
-        import('mattermost_webapp/store').then((module) => {
-            setStore(module.default);
-        });
-    }, []);
+type Props = {
+    store: any;
+}
 
-    if (!store || !browserHistory) {
+const MattermostApp = (props: Props) => {
+    if (!props.store || !browserHistory) {
         return null;
     }
 
     return (
-        <Provider store={store}>
+        <Provider store={props.store}>
             <Router history={browserHistory}>
                 <Route
                     path='/'

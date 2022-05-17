@@ -14,6 +14,8 @@ import {GET_CONFIGURATION, UPDATE_TEAMS, QUIT, RELOAD_CONFIGURATION} from 'commo
 import MainPage from './components/MainPage';
 import MattermostApp from './mattermost';
 
+import reduxStore from 'stores/redux_store.jsx';
+
 type State = {
     config?: CombinedConfig;
 }
@@ -144,8 +146,10 @@ ReactDOM.render(
     document.getElementById('app'),
 );
 
-ReactDOM.render(
-    <MattermostApp/>,
-    document.getElementById('root'),
-);
+reduxStore.loadStore().then((store) => {
+    ReactDOM.render(
+        <MattermostApp store={store}/>,
+        document.getElementById('root'),
+    );
+});
 

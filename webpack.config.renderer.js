@@ -33,6 +33,11 @@ module.exports = merge(base, {
         certificateModal: './src/renderer/modals/certificate/certificate.tsx',
         loadingScreen: './src/renderer/modals/loadingScreen/index.tsx',
     },
+    resolve: {
+        alias: {
+            redux_store: './stores/redux_store.tsx',
+        },
+    },
     output: {
         path: path.resolve(__dirname, 'dist/renderer'),
         filename: '[name]_bundle.js',
@@ -75,6 +80,11 @@ module.exports = merge(base, {
                     singleton: true,
                     eager: true,
                     requiredVersion: deps['react-router-dom'],
+                },
+                'stores/redux_store.jsx': {
+                    singleton: true,
+                    eager: true,
+                    import: 'redux_store',
                 },
                 'utils/browser_history': {
                     singleton: true,
