@@ -26,7 +26,9 @@
   "scripts": {
     "build": "npm-run-all build:*",
     "build:main": "webpack-cli --config webpack.config.main.js",
-    "build:renderer": "webpack-cli --config webpack.config.renderer.js",
+    "build:renderer": "npm-run-all build:renderer-*",
+    "build:renderer-index": "webpack-cli --config webpack.config.renderer.index.js",
+    "build:renderer-submodules": "webpack-cli --config webpack.config.renderer.js",
     "build-robotjs": "npm rebuild --runtime=electron --target=18.0.3 --disturl=https://atom.io/download/atom-shell --abi=83",
     "start": "electron dist/ --disable-dev-mode",
     "restart": "npm run build && npm run start",
@@ -37,6 +39,7 @@
     "watch": "run-p watch:*",
     "watch:main": "node scripts/watch_main_and_preload.js",
     "watch:renderer": "webpack-dev-server --config webpack.config.renderer.js",
+    "watch:renderer-index": "webpack-dev-server --config webpack.config.renderer.index.js",
     "test": "npm-run-all lint:js test:unit test:e2e",
     "test:docker": "node scripts/setup_e2e_docker.js",
     "test:e2e": "cross-env NODE_ENV=test npm-run-all build build-robotjs test:e2e:build test:e2e:run",

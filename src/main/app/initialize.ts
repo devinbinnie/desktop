@@ -266,6 +266,8 @@ function initializeAfterAppReady() {
     app.setAppUserModelId('Mattermost.Desktop'); // Use explicit AppUserModelID
     const defaultSession = session.defaultSession;
 
+    defaultSession.webRequest.onBeforeRequest({urls: ['file:///*']}, WindowManager.handleOnBeforeRequest);
+
     if (process.platform !== 'darwin') {
         defaultSession.on('spellcheck-dictionary-download-failure', (event, lang) => {
             if (Config.spellCheckerURL) {

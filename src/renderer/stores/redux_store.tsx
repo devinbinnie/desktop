@@ -4,16 +4,63 @@
 import {Reducer} from 'react';
 import {Store, AnyAction} from 'redux';
 
-class ReduxStore {
-    store?: Store<any>;
+import {SET_ACTIVE_VIEW} from 'common/communication';
+import {CombinedConfig} from 'types/config';
 
-    loadStore = async () => {
+import reducerRegistry from 'reducer_registry';
+
+class ReduxStore {
+    stores: Map<string, Store<any>>;
+    store?: Store<any>;
+    config?: CombinedConfig;
+    currentServerName?: string;
+    configureStore?: () => Store<any>;
+    replacementCallback?: (newStore?: Store<any>) => void;
+
+    constructor() {
+        this.stores = new Map();
+
+        window.ipcRenderer.on(SET_ACTIVE_VIEW, this.handleSwitchView);
+    }
+
+    initialize = async (config: CombinedConfig) => {
         const module = await import('mattermost_webapp/store');
-        this.store = module.default;
+        this.configureStore = module.default;
+
+        this.config = config;
+        this.currentServerName = (config.teams.find((team) => team.order === config.lastActiveTeam) || config.teams.find((team) => team.order === 0))?.name;
+
+        await reducerRegistry.initialize(this.currentServerName);
+        this.store = this.configureStore?.();
+
         if (process.env.NODE_ENV !== 'production') { //eslint-disable-line no-process-env
             window.store = store;
         }
-        return store;
+        return this.store;
+    }
+
+    setReplacementCallback = (callback: (newStore?: Store<any>) => void) => {
+        this.replacementCallback = callback;
+    }
+
+    handleSwitchView = (_: any, serverName: string, tabName: string) => {
+        this.replaceStore(serverName);
+    }
+
+    replaceStore = (serverName: string) => {
+        if (!(this.currentServerName && this.store)) {
+            return;
+        }
+
+        reducerRegistry.replaceRegistry(serverName);
+        console.log('registry replaced', reducerRegistry.currentRegistry);
+
+        this.stores.set(this.currentServerName, this.store);
+        this.store = this.stores.get(serverName) ?? this.configureStore?.();
+        this.currentServerName = serverName;
+        console.log('store replaced', this.store.getState());
+
+        this.replacementCallback?.(this.store);
     }
 
     dispatch = (action: AnyAction) => {
@@ -46,7 +93,7 @@ class ReduxStore {
         }
 
         return this.store.replaceReducer(nextReducer);
-    }
+    };
 
     [Symbol.observable] = () => {
         if (!this.store) {

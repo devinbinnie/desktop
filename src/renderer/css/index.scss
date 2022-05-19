@@ -207,6 +207,8 @@
 }
 
 #root {
+  position: relative;
+  display: flex;
   top: 40px;
   height: calc(100% - 40px);
 }

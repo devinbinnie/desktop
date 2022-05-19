@@ -6,6 +6,7 @@ const electron = require('electron-connect').server.create({path: 'dist/'});
 
 const mainConfig = require('../webpack.config.main.js');
 const rendererConfig = require('../webpack.config.renderer.js');
+const rendererIndexConfig = require('../webpack.config.renderer.index.js');
 
 let started = false;
 
@@ -25,6 +26,13 @@ mainCompiler.watch({}, (err, stats) => {
 
 const preloadCompiler = webpack(rendererConfig);
 preloadCompiler.watch({}, (err) => {
+    if (err) {
+        console.log(err);
+    }
+});
+
+const indexCompiler = webpack(rendererIndexConfig);
+indexCompiler.watch({}, (err) => {
     if (err) {
         console.log(err);
     }

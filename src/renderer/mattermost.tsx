@@ -2,9 +2,14 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
+import {Store} from 'redux';
 import {Provider} from 'react-redux';
 import {Router, Route} from 'react-router-dom';
 import {browserHistory} from 'utils/browser_history';
+
+import {GET_CONFIGURATION, QUIT, RELOAD_CONFIGURATION} from 'common/communication';
+import reduxStore from 'stores/redux_store.jsx';
+import {CombinedConfig} from 'types/config';
 
 import('mattermost_webapp/styles');
 
@@ -25,25 +30,86 @@ const updateWebsocket = (websocketURL: string) => {
 };
 updateWebsocket('wss://home.sourcestorm.net/mattermost/');
 
-type Props = {
-    store: any;
+type State = {
+    config?: CombinedConfig;
+    store?: Store<any>;
 }
-
-const MattermostApp = (props: Props) => {
-    if (!props.store || !browserHistory) {
-        return null;
+export class MattermostApp extends React.PureComponent<Record<string, never>, State> {
+    constructor(props: Record<string, never>) {
+        super(props);
+        this.state = {};
     }
 
-    return (
-        <Provider store={props.store}>
-            <Router history={browserHistory}>
-                <Route
-                    path='/'
-                    component={MattermostRoot}
-                />
-            </Router>
-        </Provider>
-    );
-};
+    async componentDidMount() {
+        const config = await this.setInitialConfig();
+        await this.setInitialStore(config);
+        reduxStore.setReplacementCallback(this.onReplaceStore);
+
+        window.ipcRenderer.on('synchronize-config', () => {
+            this.reloadConfig();
+        });
+
+        window.ipcRenderer.on(RELOAD_CONFIGURATION, () => {
+            this.reloadConfig();
+        });
+    }
+
+    setInitialStore = async (config: CombinedConfig) => {
+        const store = await reduxStore.initialize(config);
+        this.setState({store});
+    }
+
+    onReplaceStore = (newStore?: Store<any>) => {
+        if (newStore) {
+            this.setState({store: undefined}, () => {
+                console.log('set back to root');
+                browserHistory.push('/');
+                this.setState({store: newStore});
+            });
+        }
+    }
+
+    setInitialConfig = async () => {
+        const config = await this.requestConfig(true);
+        this.setState({config});
+        return config;
+    }
+
+    reloadConfig = async () => {
+        const config = await this.requestConfig();
+        this.setState({config});
+    };
+
+    requestConfig = async (exitOnError?: boolean) => {
+        // todo: should we block?
+        try {
+            const configRequest = await window.ipcRenderer.invoke(GET_CONFIGURATION);
+            return configRequest;
+        } catch (err: any) {
+            console.log(`there was an error with the config: ${err}`);
+            if (exitOnError) {
+                window.ipcRenderer.send(QUIT, `unable to load configuration: ${err}`, err.stack);
+            }
+        }
+        return null;
+    };
+
+    render() {
+        if (!this.state.store || !browserHistory) {
+            return null;
+        }
+
+        return (
+            <Provider store={this.state.store}>
+                <Router history={browserHistory}>
+                    <Route
+                        path='/'
+                        component={MattermostRoot}
+                    />
+                </Router>
+            </Provider>
+        );
+    }
+}
 
 export default MattermostApp;
