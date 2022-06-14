@@ -33,6 +33,7 @@ import {
     USER_ACTIVITY_UPDATE,
     START_UPGRADE,
     START_DOWNLOAD,
+    PING_DOMAIN,
 } from 'common/communication';
 import Config from 'common/config';
 import urlUtils from 'common/utils/url';
@@ -81,6 +82,7 @@ import {
     handleSwitchServer,
     handleSwitchTab,
     handleUpdateLastActive,
+    handlePingDomain,
 } from './intercom';
 import {
     clearAppCache,
@@ -137,12 +139,6 @@ export async function initialize() {
 
 function initializeArgs() {
     global.args = parseArgs(process.argv.slice(1));
-
-    // output the application version via cli when requested (-v or --version)
-    if (global.args.version) {
-        process.stdout.write(`v.${app.getVersion()}\n`);
-        process.exit(0); // eslint-disable-line no-process-exit
-    }
 
     global.isDev = isDev && !global.args.disableDevMode; // this doesn't seem to be right and isn't used as the single source of truth
 
@@ -259,6 +255,7 @@ function initializeInterCommunicationEventListeners() {
     ipcMain.handle(GET_DOWNLOAD_LOCATION, handleSelectDownload);
     ipcMain.on(START_DOWNLOAD, handleStartDownload);
     ipcMain.on(START_UPGRADE, handleStartUpgrade);
+    ipcMain.handle(PING_DOMAIN, handlePingDomain);
 }
 
 function initializeAfterAppReady() {
