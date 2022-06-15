@@ -32,7 +32,7 @@ import {SECOND} from 'common/utils/constants';
 import Config from 'common/config';
 import {getTabViewName, TAB_MESSAGING} from 'common/tabs/TabView';
 
-import {getAdjustedWindowBoundaries, shouldHaveBackBar} from '../utils';
+import {getAdjustedWindowBoundaries, getLocalURLString, shouldHaveBackBar} from '../utils';
 
 import {ViewManager} from '../views/viewManager';
 import CriticalErrorHandler from '../CriticalErrorHandler';
@@ -394,6 +394,56 @@ export class WindowManager {
         if (!this.currentServerName) {
             this.currentServerName = (Config.teams.find((team) => team.order === Config.lastActiveTeam) || Config.teams.find((team) => team.order === 0))?.name;
         }
+    }
+
+    handleOnBeforeRequest = (details: Electron.OnBeforeRequestListenerDetails, callback: (response: Electron.Response) => void) => {
+        log.info('WindowManager.handleOnBeforeRequest', details.url);
+
+        // Anything in the local folder is fine
+        if (details.url.startsWith(getLocalURLString(''))) {
+            return callback({});
+        }
+
+        const serverURL = Config.teams.find((team) => team.name === this.currentServerName)!.url;
+        const staticRegex = /^file:\/\/\/(.*)static/g;
+        if (details.url.match(staticRegex)) {
+            const rewrittenURL = details.url.replace(staticRegex, `${serverURL}/static`);
+            return callback({redirectURL: rewrittenURL});
+        }
+
+        const pluginRegex = /^file:\/\/\/(.*)plugins\/(.+)\/api/g;
+        if (details.url.match(pluginRegex)) {
+            const rewrittenURL = details.url.replace(pluginRegex, `${serverURL}/plugins/$2/api`);
+            return callback({redirectURL: rewrittenURL});
+        }
+
+        const apiRegex = /^file:\/\/\/(.*)api/g;
+        if (details.url.match(apiRegex)) {
+            const rewrittenURL = details.url.replace(apiRegex, `${serverURL}/api`);
+            return callback({redirectURL: rewrittenURL});
+        }
+
+        return callback({});
+    }
+
+    handleOnBeforeSendHeaders = (details: Electron.OnBeforeSendHeadersListenerDetails, callback: (beforeSendResponse: Electron.BeforeSendResponse) => void) => {
+        log.silly('WindowManager.handleOnBeforeSendHeaders', details.url);
+
+        if (!details.url.startsWith('ws')) {
+            return callback({});
+        }
+
+        if (!(details.requestHeaders.Origin === 'file://')) {
+            return callback({});
+        }
+
+        const serverURL = Config.teams.find((team) => team.name === this.currentServerName)!.url;
+        const parsedURL = urlUtils.parseURL(serverURL);
+        if (parsedURL) {
+            details.requestHeaders.Origin = `${parsedURL.protocol}//${parsedURL.host}`;
+        }
+
+        return callback({requestHeaders: details.requestHeaders});
     }
 
     switchServer = (serverName: string, waitForViewToExist = false) => {

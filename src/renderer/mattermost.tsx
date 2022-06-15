@@ -62,7 +62,6 @@ export class MattermostApp extends React.PureComponent<Record<string, never>, St
     onReplaceStore = (newStore?: Store<any>) => {
         if (newStore) {
             this.setState({store: undefined}, () => {
-                console.log('set back to root');
                 browserHistory.push('/');
                 this.setState({store: newStore});
             });

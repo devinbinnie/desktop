@@ -53,12 +53,10 @@ class ReduxStore {
         }
 
         reducerRegistry.replaceRegistry(serverName);
-        console.log('registry replaced', reducerRegistry.currentRegistry);
 
         this.stores.set(this.currentServerName, this.store);
         this.store = this.stores.get(serverName) ?? this.configureStore?.();
         this.currentServerName = serverName;
-        console.log('store replaced', this.store.getState());
 
         this.replacementCallback?.(this.store);
     }
