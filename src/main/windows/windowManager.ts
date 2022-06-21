@@ -397,7 +397,7 @@ export class WindowManager {
     }
 
     handleOnBeforeRequest = (details: Electron.OnBeforeRequestListenerDetails, callback: (response: Electron.Response) => void) => {
-        log.info('WindowManager.handleOnBeforeRequest', details.url);
+        log.silly('WindowManager.handleOnBeforeRequest', details.url);
 
         // Anything in the local folder is fine
         if (details.url.startsWith(getLocalURLString(''))) {
@@ -405,19 +405,25 @@ export class WindowManager {
         }
 
         const serverURL = Config.teams.find((team) => team.name === this.currentServerName)!.url;
-        const staticRegex = /^file:\/\/\/(.*)static/g;
+        const staticRegex = /^file:\/\/\/(.*)\/static/g;
         if (details.url.match(staticRegex)) {
             const rewrittenURL = details.url.replace(staticRegex, `${serverURL}/static`);
             return callback({redirectURL: rewrittenURL});
         }
 
-        const pluginRegex = /^file:\/\/\/(.*)plugins\/(.+)\/api/g;
-        if (details.url.match(pluginRegex)) {
-            const rewrittenURL = details.url.replace(pluginRegex, `${serverURL}/plugins/$2/api`);
+        const pluginApiRegex = /^file:\/\/\/(.*)\/api\/v4\/plugins\/(.+)/g;
+        if (details.url.match(pluginApiRegex)) {
+            const rewrittenURL = details.url.replace(pluginApiRegex, `${serverURL}/api/v4/plugins/$2`);
             return callback({redirectURL: rewrittenURL});
         }
 
-        const apiRegex = /^file:\/\/\/(.*)api/g;
+        const pluginRegex = /^file:\/\/\/(.*)\/plugins\/(.+)/g;
+        if (details.url.match(pluginRegex)) {
+            const rewrittenURL = details.url.replace(pluginRegex, `${serverURL}/plugins/$2`);
+            return callback({redirectURL: rewrittenURL});
+        }
+
+        const apiRegex = /^file:\/\/\/(.*)\/api/g;
         if (details.url.match(apiRegex)) {
             const rewrittenURL = details.url.replace(apiRegex, `${serverURL}/api`);
             return callback({redirectURL: rewrittenURL});
@@ -444,6 +450,24 @@ export class WindowManager {
         }
 
         return callback({requestHeaders: details.requestHeaders});
+    }
+
+    handleOnHeadersReceived = (details: Electron.OnHeadersReceivedListenerDetails, callback: (headersReceivedResponse: Electron.HeadersReceivedResponse) => void) => {
+        log.info('WindowManager.handleOnHeadersReceived', details.url, details.responseHeaders);
+
+        const newHeaders: any = {};
+
+        if (details.responseHeaders && details.responseHeaders['set-cookie']) {
+            const cookies = details.responseHeaders['set-cookie'];
+            newHeaders['set-cookie'] = cookies.map((cookie) => {
+                return `${cookie};SameSite=None`;
+            });
+        }
+
+        return callback({responseHeaders: {
+            ...details.responseHeaders,
+            ...newHeaders,
+        }});
     }
 
     switchServer = (serverName: string, waitForViewToExist = false) => {

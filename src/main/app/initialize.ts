@@ -265,6 +265,7 @@ function initializeAfterAppReady() {
 
     defaultSession.webRequest.onBeforeRequest({urls: ['file:///*']}, WindowManager.handleOnBeforeRequest);
     defaultSession.webRequest.onBeforeSendHeaders(WindowManager.handleOnBeforeSendHeaders);
+    defaultSession.webRequest.onHeadersReceived(WindowManager.handleOnHeadersReceived);
 
     if (process.platform !== 'darwin') {
         defaultSession.on('spellcheck-dictionary-download-failure', (event, lang) => {
