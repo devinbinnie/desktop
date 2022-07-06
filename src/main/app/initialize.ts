@@ -338,6 +338,7 @@ function initializeAfterAppReady() {
 
     initCookieManager(defaultSession);
 
+    WindowManager.initializeCookies();
     WindowManager.showMainWindow(deeplinkingURL);
 
     CriticalErrorHandler.setMainWindow(WindowManager.getMainWindow()!);

@@ -4,7 +4,7 @@
 /* eslint-disable max-lines */
 import path from 'path';
 
-import {app, BrowserWindow, nativeImage, systemPreferences, ipcMain, IpcMainEvent, IpcMainInvokeEvent, desktopCapturer} from 'electron';
+import {app, BrowserWindow, nativeImage, systemPreferences, ipcMain, IpcMainEvent, IpcMainInvokeEvent, desktopCapturer, session} from 'electron';
 import log from 'electron-log';
 
 import {
@@ -31,8 +31,9 @@ import urlUtils from 'common/utils/url';
 import {SECOND} from 'common/utils/constants';
 import Config from 'common/config';
 import {getTabViewName, TAB_MESSAGING} from 'common/tabs/TabView';
+import {ServerFromURL} from 'types/utils';
 
-import {getAdjustedWindowBoundaries, getLocalURLString, shouldHaveBackBar} from '../utils';
+import {getAdjustedWindowBoundaries, getLocalURLString, parseCookieString, shouldHaveBackBar} from '../utils';
 
 import {ViewManager} from '../views/viewManager';
 import CriticalErrorHandler from '../CriticalErrorHandler';
@@ -54,9 +55,12 @@ export class WindowManager {
     teamDropdown?: TeamDropdownView;
     currentServerName?: string;
 
+    cookies: Map<string, any>;
+
     constructor() {
         this.mainWindowReady = false;
         this.assetsDir = path.resolve(app.getAppPath(), 'assets');
+        this.cookies = new Map();
 
         ipcMain.on(HISTORY, this.handleHistory);
         ipcMain.handle(GET_LOADING_SCREEN_DATA, this.handleLoadingScreenDataRequest);
@@ -71,6 +75,35 @@ export class WindowManager {
         ipcMain.handle(GET_VIEW_WEBCONTENTS_ID, this.handleGetWebContentsId);
         ipcMain.on(DISPATCH_GET_DESKTOP_SOURCES, this.handleGetDesktopSources);
         ipcMain.on(RELOAD_CURRENT_VIEW, this.handleReloadCurrentView);
+    }
+
+    initializeCookies = async () => {
+        const cookies = await session.defaultSession.cookies.get({});
+        if (!cookies) {
+            return;
+        }
+
+        Config.teams.forEach((team) => {
+            const teamURL = urlUtils.parseURL(team.url)!;
+
+            // Filter out cookies that aren't part of our domain
+            const filteredCookies = cookies.filter((cookie) => cookie.domain && cookie.domain.includes(teamURL.host));
+
+            const userId = filteredCookies.find((cookie) => cookie.name === 'MMUSERID');
+            const csrf = filteredCookies.find((cookie) => cookie.name === 'MMCSRF');
+            const authToken = filteredCookies.find((cookie) => cookie.name === 'MMAUTHTOKEN');
+
+            log.info('set cookie for', team.name, {
+                MMUSERID: userId?.value,
+                MMCSRF: csrf?.value,
+                MMAUTHTOKEN: authToken?.value,
+            });
+            this.cookies.set(team.name, {
+                MMUSERID: userId?.value,
+                MMCSRF: csrf?.value,
+                MMAUTHTOKEN: authToken?.value,
+            });
+        });
     }
 
     handleUpdateConfig = () => {
@@ -433,41 +466,107 @@ export class WindowManager {
     }
 
     handleOnBeforeSendHeaders = (details: Electron.OnBeforeSendHeadersListenerDetails, callback: (beforeSendResponse: Electron.BeforeSendResponse) => void) => {
-        log.silly('WindowManager.handleOnBeforeSendHeaders', details.url);
+        log.silly('WindowManager.handleOnBeforeSendHeaders', details);
+
+        const server = urlUtils.getView(details.url.replace(/^ws(s*):(.+)/g, 'http$1:$2/'), Config.teams);
+        if (!server) {
+            return callback({});
+        }
+
+        let headers: any = {};
+        headers = this.addCookieHeaders(headers, details, server);
+        headers = this.addOriginForWebsocket(headers, details, server);
+
+        return callback({requestHeaders: {
+            ...details.requestHeaders,
+            ...headers,
+        }});
+    }
+
+    addCookieHeaders = (headers: any, details: Electron.OnBeforeSendHeadersListenerDetails, server: ServerFromURL) => {
+        log.silly('WindowManager.addCookieHeaders', headers, details, server);
+
+        const newHeaders: any = {};
+        const serverName = server.name.split('___')[0];
+
+        const cookieObject = this.cookies.get(serverName);
+        if (cookieObject) {
+            const cookies = Object.keys(cookieObject).map((cookie) => `${cookie}=${cookieObject[cookie]}`);
+            newHeaders.Cookie = `${headers.Cookie ? `${headers.Cookie}; ` : ''}${cookies.join('; ')}`;
+        }
+
+        return {
+            ...headers,
+            ...newHeaders,
+        };
+    }
+
+    addOriginForWebsocket = (headers: any, details: Electron.OnBeforeSendHeadersListenerDetails, server: ServerFromURL) => {
+        log.silly('WindowManager.addOriginForWebsocket', headers, details, server);
 
         if (!details.url.startsWith('ws')) {
-            return callback({});
+            return headers;
         }
 
         if (!(details.requestHeaders.Origin === 'file://')) {
-            return callback({});
+            return headers;
         }
 
-        const serverURL = Config.teams.find((team) => team.name === this.currentServerName)!.url;
-        const parsedURL = urlUtils.parseURL(serverURL);
+        const newHeaders: any = {};
+        const parsedURL = urlUtils.parseURL(server.url);
+
         if (parsedURL) {
-            details.requestHeaders.Origin = `${parsedURL.protocol}//${parsedURL.host}`;
+            headers.Origin = `${parsedURL.protocol}//${parsedURL.host}`;
         }
 
-        return callback({requestHeaders: details.requestHeaders});
+        return {
+            ...headers,
+            ...newHeaders,
+        };
     }
 
     handleOnHeadersReceived = (details: Electron.OnHeadersReceivedListenerDetails, callback: (headersReceivedResponse: Electron.HeadersReceivedResponse) => void) => {
-        log.info('WindowManager.handleOnHeadersReceived', details.url, details.responseHeaders);
+        log.silly('WindowManager.handleOnHeadersReceived', details.url, details.responseHeaders);
 
-        const newHeaders: any = {};
+        const server = urlUtils.getView(details.url, Config.teams);
+        if (!server) {
+            return callback({});
+        }
+        const serverName = server.name.split('___')[0];
 
-        if (details.responseHeaders && details.responseHeaders['set-cookie']) {
-            const cookies = details.responseHeaders['set-cookie'];
-            newHeaders['set-cookie'] = cookies.map((cookie) => {
-                return `${cookie};SameSite=None`;
-            });
+        if (details.responseHeaders) {
+            const cookieHeaderName = Object.keys(details.responseHeaders).find((key) => key.toLowerCase() === 'set-cookie');
+            if (cookieHeaderName) {
+                const cookies = details.responseHeaders[cookieHeaderName];
+                cookies.forEach((cookie) => {
+                    if (cookie.includes('MMAUTHTOKEN') || cookie.includes('MMUSERID') || cookie.includes('MMCSRF')) {
+                        const parsedCookie = cookie.split('; ')[0];
+                        const cookieName = parsedCookie.split('=')[0];
+                        const cookieValue = parsedCookie.split('=')[1];
+                        this.cookies.set(serverName, {...this.cookies.get(serverName), [cookieName]: cookieValue});
+
+                        const cookieObject = parseCookieString(cookie);
+                        session.defaultSession.cookies.set({
+                            url: server.url,
+                            name: cookieName,
+                            value: cookieValue,
+                            domain: urlUtils.parseURL(server.url)?.host,
+                            path: cookieObject.Path,
+                            secure: Object.hasOwn(cookieObject, 'Secure'),
+                            httpOnly: Object.hasOwn(cookieObject, 'HttpOnly'),
+                            expirationDate: new Date(cookieObject.Expires).valueOf(),
+                            sameSite: 'no_restriction',
+                        }).then(() => {
+                            return session.defaultSession.cookies.flushStore();
+                        }).catch((err) => {
+                            log.error('An error occurring setting cookies', err);
+                        });
+                    }
+                });
+            }
         }
 
-        return callback({responseHeaders: {
-            ...details.responseHeaders,
-            ...newHeaders,
-        }});
+        return callback({});
     }
 
     switchServer = (serverName: string, waitForViewToExist = false) => {

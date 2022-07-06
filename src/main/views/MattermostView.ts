@@ -246,7 +246,7 @@ export class MattermostView extends EventEmitter {
         this.hasBeenShown = true;
         const request = typeof requestedVisibility === 'undefined' ? true : requestedVisibility;
         if (request && !this.isVisible) {
-            this.window.addBrowserView(this.view);
+            //this.window.addBrowserView(this.view);
             this.setBounds(getWindowBoundaries(this.window, shouldHaveBackBar(this.tab.url || '', this.view.webContents.getURL())));
             if (this.status === Status.READY) {
                 this.focus();

@@ -7,7 +7,7 @@ import {Provider} from 'react-redux';
 import {Router, Route} from 'react-router-dom';
 import {browserHistory} from 'utils/browser_history';
 
-import {GET_CONFIGURATION, QUIT, RELOAD_CONFIGURATION} from 'common/communication';
+import {GET_CONFIGURATION, QUIT, RELOAD_CONFIGURATION, SET_ACTIVE_VIEW} from 'common/communication';
 import reduxStore from 'stores/redux_store.jsx';
 import {CombinedConfig} from 'types/config';
 
@@ -28,11 +28,12 @@ const updateWebsocket = (websocketURL: string) => {
         return new NativeWebSocket(url.replace('file:///', websocketURL));
     };
 };
-updateWebsocket('wss://home.sourcestorm.net/mattermost/');
 
 type State = {
     config?: CombinedConfig;
     store?: Store<any>;
+    activeServerName?: string;
+    activeTabName?: string;
 }
 export class MattermostApp extends React.PureComponent<Record<string, never>, State> {
     constructor(props: Record<string, never>) {
@@ -47,11 +48,34 @@ export class MattermostApp extends React.PureComponent<Record<string, never>, St
 
         window.ipcRenderer.on('synchronize-config', () => {
             this.reloadConfig();
+            this.updateWebsocketAddress();
         });
 
         window.ipcRenderer.on(RELOAD_CONFIGURATION, () => {
             this.reloadConfig();
+            this.updateWebsocketAddress();
         });
+
+        window.ipcRenderer.on(SET_ACTIVE_VIEW, (event, serverName, tabName) => {
+            this.setState({activeServerName: serverName, activeTabName: tabName}, () => {
+                this.updateWebsocketAddress();
+            });
+        });
+    }
+
+    updateWebsocketAddress = () => {
+        if (!(this.state.config && this.state.activeServerName)) {
+            return;
+        }
+
+        const serverURL = this.state.config.teams.find((team) => team.name === this.state.activeServerName)?.url;
+        if (!serverURL) {
+            return;
+        }
+
+        const websocketURL = serverURL.replace(/^http(s*):(.+)/g, 'ws$1:$2/');
+        console.log('fixed websocket address', websocketURL);
+        updateWebsocket(websocketURL);
     }
 
     setInitialStore = async (config: CombinedConfig) => {

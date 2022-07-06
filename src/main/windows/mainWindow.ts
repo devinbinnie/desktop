@@ -102,6 +102,7 @@ function createMainWindow(options: {linuxAppIcon: string; fullscreen?: boolean})
     const mainWindow = new BrowserWindow(windowOptions);
     mainWindow.setMenuBarVisibility(false);
 
+    mainWindow.webContents.openDevTools({mode: 'detach'});
     try {
         ipcMain.handle(GET_FULL_SCREEN_STATUS, () => mainWindow.isFullScreen());
     } catch (e) {

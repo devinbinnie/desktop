@@ -98,3 +98,12 @@ export function composeUserAgent() {
 
     return `${filteredUserAgent.join(' ')} Mattermost/${app.getVersion()}`;
 }
+
+export function parseCookieString(cookie: string) {
+    const output: any = {};
+    cookie.split(/\s*;\s*/).forEach((value) => {
+        const kvp = value.split(/\s*=\s*/);
+        output[kvp[0]] = kvp.splice(1).join('=');
+    });
+    return output;
+}
