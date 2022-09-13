@@ -26,6 +26,7 @@ import {
     DISPATCH_GET_DESKTOP_SOURCES,
     DESKTOP_SOURCES_RESULT,
     RELOAD_CURRENT_VIEW,
+    VIEW_FINISHED_RESIZING,
 } from 'common/communication';
 import urlUtils from 'common/utils/url';
 import {SECOND} from 'common/utils/constants';
@@ -33,9 +34,11 @@ import Config from 'common/config';
 import {getTabViewName, TAB_MESSAGING} from 'common/tabs/TabView';
 import {ServerFromURL} from 'types/utils';
 
+import {MattermostView} from 'main/views/MattermostView';
+
 import {getAdjustedWindowBoundaries, getLocalURLString, parseCookieString, shouldHaveBackBar} from '../utils';
 
-import {ViewManager} from '../views/viewManager';
+import {ViewManager, LoadingScreenState} from '../views/viewManager';
 import CriticalErrorHandler from '../CriticalErrorHandler';
 
 import TeamDropdownView from '../views/teamDropdownView';
@@ -75,35 +78,6 @@ export class WindowManager {
         ipcMain.handle(GET_VIEW_WEBCONTENTS_ID, this.handleGetWebContentsId);
         ipcMain.on(DISPATCH_GET_DESKTOP_SOURCES, this.handleGetDesktopSources);
         ipcMain.on(RELOAD_CURRENT_VIEW, this.handleReloadCurrentView);
-    }
-
-    initializeCookies = async () => {
-        const cookies = await session.defaultSession.cookies.get({});
-        if (!cookies) {
-            return;
-        }
-
-        Config.teams.forEach((team) => {
-            const teamURL = urlUtils.parseURL(team.url)!;
-
-            // Filter out cookies that aren't part of our domain
-            const filteredCookies = cookies.filter((cookie) => cookie.domain && cookie.domain.includes(teamURL.host));
-
-            const userId = filteredCookies.find((cookie) => cookie.name === 'MMUSERID');
-            const csrf = filteredCookies.find((cookie) => cookie.name === 'MMCSRF');
-            const authToken = filteredCookies.find((cookie) => cookie.name === 'MMAUTHTOKEN');
-
-            log.info('set cookie for', team.name, {
-                MMUSERID: userId?.value,
-                MMCSRF: csrf?.value,
-                MMAUTHTOKEN: authToken?.value,
-            });
-            this.cookies.set(team.name, {
-                MMUSERID: userId?.value,
-                MMCSRF: csrf?.value,
-                MMAUTHTOKEN: authToken?.value,
-            });
-        });
     }
 
     handleUpdateConfig = () => {
@@ -167,7 +141,11 @@ export class WindowManager {
             });
             this.mainWindow.on('maximize', this.handleMaximizeMainWindow);
             this.mainWindow.on('unmaximize', this.handleUnmaximizeMainWindow);
-            this.mainWindow.on('resize', this.handleResizeMainWindow);
+            if (process.platform !== 'darwin') {
+                this.mainWindow.on('resize', this.handleResizeMainWindow);
+            }
+            this.mainWindow.on('will-resize', this.handleWillResizeMainWindow);
+            this.mainWindow.on('resized', this.handleResizedMainWindow);
             this.mainWindow.on('focus', this.focusBrowserView);
             this.mainWindow.on('enter-full-screen', () => this.sendToRenderer('enter-full-screen'));
             this.mainWindow.on('leave-full-screen', () => this.sendToRenderer('leave-full-screen'));
@@ -206,8 +184,49 @@ export class WindowManager {
         this.sendToRenderer(MAXIMIZE_CHANGE, false);
     }
 
+    isResizing = false;
+
+    handleWillResizeMainWindow = (event: Event, newBounds: Electron.Rectangle) => {
+        log.silly('WindowManager.handleWillResizeMainWindow');
+
+        if (!(this.viewManager && this.mainWindow)) {
+            return;
+        }
+
+        if (this.isResizing && this.viewManager.loadingScreenState === LoadingScreenState.HIDDEN && this.viewManager.getCurrentView()) {
+            log.silly('prevented resize');
+            event.preventDefault();
+            return;
+        }
+
+        this.throttledWillResize(newBounds);
+        this.viewManager?.setLoadingScreenBounds();
+        this.teamDropdown?.updateWindowBounds();
+        ipcMain.emit(RESIZE_MODAL, null, newBounds);
+    }
+
+    handleResizedMainWindow = () => {
+        log.silly('WindowManager.handleResizedMainWindow');
+
+        if (this.mainWindow) {
+            const bounds = this.getBounds();
+            this.throttledWillResize(bounds);
+            ipcMain.emit(RESIZE_MODAL, null, bounds);
+        }
+        this.isResizing = false;
+    }
+
+    handleViewFinishedResizing = () => {
+        this.isResizing = false;
+    }
+
+    private throttledWillResize = (newBounds: Electron.Rectangle) => {
+        this.isResizing = true;
+        this.setCurrentViewBounds(newBounds);
+    }
+
     handleResizeMainWindow = () => {
-        log.debug('WindowManager.handleResizeMainWindow');
+        log.silly('WindowManager.handleResizeMainWindow');
 
         if (!(this.viewManager && this.mainWindow)) {
             return;
@@ -231,16 +250,7 @@ export class WindowManager {
             }
         };
 
-        // Another workaround since the window doesn't update properly under Linux for some reason
-        // See above comment
-        if (process.platform === 'linux') {
-            setTimeout(setBoundsFunction, 10);
-        } else {
-            setBoundsFunction();
-        }
-        this.viewManager.setLoadingScreenBounds();
-        this.teamDropdown?.updateWindowBounds();
-        ipcMain.emit(RESIZE_MODAL, null, bounds);
+        return bounds as Electron.Rectangle;
     }
 
     // max retries allows the message to get to the renderer even if it is sent while the app is starting up.
@@ -808,7 +818,7 @@ export class WindowManager {
         log.debug('WindowManager.handleAppLoggedIn', viewName);
 
         const view = this.viewManager?.views.get(viewName);
-        if (view) {
+        if (view && !view.isLoggedIn) {
             view.isLoggedIn = true;
             this.viewManager?.reloadViewIfNeeded(viewName);
         }
@@ -818,7 +828,7 @@ export class WindowManager {
         log.debug('WindowManager.handleAppLoggedOut', viewName);
 
         const view = this.viewManager?.views.get(viewName);
-        if (view) {
+        if (view && view.isLoggedIn) {
             view.isLoggedIn = false;
         }
     }

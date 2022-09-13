@@ -20,7 +20,7 @@ import {
     BROWSER_HISTORY_PUSH,
     UPDATE_LAST_ACTIVE,
     UPDATE_URL_VIEW_WIDTH,
-    SHOW_NEW_SERVER_MODAL,
+    MAIN_WINDOW_SHOWN,
 } from 'common/communication';
 import Config from 'common/config';
 import urlUtils from 'common/utils/url';
@@ -28,6 +28,7 @@ import Utils from 'common/utils/util';
 import {MattermostServer} from 'common/servers/MattermostServer';
 import {getServerView, getTabViewName, TabTuple, TabType} from 'common/tabs/TabView';
 
+import {localizeMessage} from 'main/i18nManager';
 import {ServerInfo} from 'main/server/serverInfo';
 
 import {getLocalURLString, getLocalPreload, getWindowBoundaries} from '../utils';
@@ -39,7 +40,7 @@ import WebContentsEventManager from './webContentEvents';
 const URL_VIEW_DURATION = 10 * SECOND;
 const URL_VIEW_HEIGHT = 20;
 
-enum LoadingScreenState {
+export enum LoadingScreenState {
     VISIBLE = 1,
     FADING = 2,
     HIDDEN = 3,
@@ -214,7 +215,7 @@ export class ViewManager {
             }
         } else {
             this.mainWindow.webContents.send(SET_ACTIVE_VIEW, null, null);
-            ipcMain.emit(SHOW_NEW_SERVER_MODAL);
+            ipcMain.emit(MAIN_WINDOW_SHOWN);
         }
     }
 
@@ -276,7 +277,7 @@ export class ViewManager {
             log.error(`Couldn't find a view with the name ${viewName}`);
             return;
         }
-        WebContentsEventManager.addWebContentsEventListeners(view, this.getServers);
+        WebContentsEventManager.addMattermostViewEventListeners(view, this.getServers);
     }
 
     finishLoading = (server: string) => {
@@ -531,7 +532,10 @@ export class ViewManager {
                     }
                 }
             } else {
-                dialog.showErrorBox('No matching server', `there is no configured server in the app that matches the requested url: ${parsedURL.toString()}`);
+                dialog.showErrorBox(
+                    localizeMessage('main.views.viewManager.handleDeepLink.error.title', 'No matching server'),
+                    localizeMessage('main.views.viewManager.handleDeepLink.error.body', 'There is no configured server in the app that matches the requested url: {url}', {url: parsedURL.toString()}),
+                );
             }
         }
     };
