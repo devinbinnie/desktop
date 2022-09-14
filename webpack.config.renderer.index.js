@@ -65,11 +65,6 @@ module.exports = merge(base, {
                     eager: true,
                     requiredVersion: deps['react-redux'],
                 },
-                'react-router': {
-                    singleton: true,
-                    eager: true,
-                    requiredVersion: deps['react-router'],
-                },
                 'react-router-dom': {
                     singleton: true,
                     eager: true,
