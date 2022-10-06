@@ -27,6 +27,7 @@ import {
     DESKTOP_SOURCES_RESULT,
     RELOAD_CURRENT_VIEW,
     VIEW_FINISHED_RESIZING,
+    GET_CURRENT_SERVER_URL,
 } from 'common/communication';
 import urlUtils from 'common/utils/url';
 import {SECOND} from 'common/utils/constants';
@@ -78,6 +79,7 @@ export class WindowManager {
         ipcMain.handle(GET_VIEW_WEBCONTENTS_ID, this.handleGetWebContentsId);
         ipcMain.on(DISPATCH_GET_DESKTOP_SOURCES, this.handleGetDesktopSources);
         ipcMain.on(RELOAD_CURRENT_VIEW, this.handleReloadCurrentView);
+        ipcMain.handle(GET_CURRENT_SERVER_URL, this.handleGetCurrentURL);
     }
 
     handleUpdateConfig = () => {
@@ -869,6 +871,10 @@ export class WindowManager {
         }
         view?.reload();
         this.viewManager?.showByName(view?.name);
+    }
+
+    handleGetCurrentURL = () => {
+        return '';
     }
 }
 

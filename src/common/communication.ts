@@ -129,3 +129,5 @@ export const RETRIEVED_LANGUAGE_INFORMATION = 'retrieved-language-information';
 export const GET_AVAILABLE_LANGUAGES = 'get-available-languages';
 
 export const VIEW_FINISHED_RESIZING = 'view-finished-resizing';
+
+export const GET_CURRENT_SERVER_URL = 'get-current-server-url';

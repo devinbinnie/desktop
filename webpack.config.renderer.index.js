@@ -18,6 +18,32 @@ const deps = require('./package.json').dependencies;
 
 const WEBSERVER_PORT = process.env.WEBSERVER_PORT ?? 9001;
 
+const getRemoteEntry = (resolve) => {
+    const script = document.createElement('script');
+    window.mattermost.getUrl.then((url) => {
+        script.src = `${url}/static/remoteEntry.js`;
+        script.onload = () => {
+            // the injected script has loaded and is available on window
+            // we can now resolve this Promise
+            const proxy = {
+                get: (request) => window.mattermost_webapp.get(request),
+                init: (arg) => {
+                    try {
+                        return window.mattermost_webapp.init(arg);
+                    } catch (e) {
+                        // eslint-disable-next-line no-console
+                        console.error('remote container already initialized');
+                    }
+                },
+            };
+            resolve(proxy);
+        };
+    });
+
+    // inject this script with the src set to the versioned remoteEntry.js
+    document.head.appendChild(script);
+};
+
 module.exports = merge(base, {
     entry: {
         index: './src/renderer/index_bootstrap.ts',
@@ -37,7 +63,7 @@ module.exports = merge(base, {
         new webpack.container.ModuleFederationPlugin({
             name: 'index',
             remotes: {
-                mattermost_webapp: `mattermost_webapp@${path.resolve(__dirname, '../mattermost-webapp/dist/remoteEntry.js')}`,
+                mattermost_webapp: `promise new Promise(${getRemoteEntry.toString()})`,
             },
             shared: {
                 history: {
