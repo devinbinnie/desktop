@@ -578,7 +578,12 @@ export class WindowManager {
             }
         }
 
-        return callback({});
+        return callback({
+            responseHeaders: {
+                ...details.responseHeaders,
+                'Content-Security-Policy': `default-src 'self'; script-src ${server.url}; style-src 'self' 'unsafe-inline'`,
+            },
+        });
     }
 
     switchServer = (serverName: string, waitForViewToExist = false) => {
