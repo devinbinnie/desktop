@@ -72,6 +72,12 @@ module.exports = merge(base, {
                     requiredVersion: deps.react,
                     import: false,
                 },
+                'react-beautiful-dnd': {
+                    singleton: true,
+                    eager: true,
+                    requiredVersion: deps['react-beautiful-dnd'],
+                    import: false,
+                },
                 'react-dom': {
                     singleton: true,
                     eager: true,
