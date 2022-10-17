@@ -19,11 +19,19 @@ const MattermostRoot = (props: any) => (
 );
 MattermostRoot.displayName = 'Root';
 
+const LazyCRTPostsChannelResetWatcher = React.lazy(() => import('mattermost_webapp/crtWatcher'));
+const MattermostCRTPostsChannelResetWatcher = (props: any) => (
+    <React.Suspense fallback={<div>{'Loading...'}</div>}>
+        <LazyCRTPostsChannelResetWatcher {...props}/>
+    </React.Suspense>
+);
+MattermostCRTPostsChannelResetWatcher.displayName = 'CRTPostsChannelResetWatcher';
+
 const updateWebsocket = (websocketURL: string) => {
     const NativeWebSocket = window.WebSocket;
-    // eslint-disable-next-line func-names, @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    window.WebSocket = (url: string) => {
+
+    // eslint-disable-next-line func-names
+    window.WebSocket = function(url: string) {
         return new NativeWebSocket(url.replace('file:///', websocketURL));
     };
 };
@@ -121,6 +129,7 @@ export class MattermostApp extends React.PureComponent<Record<string, never>, St
 
         return (
             <Provider store={this.store}>
+                <MattermostCRTPostsChannelResetWatcher/>
                 <Router history={this.browserHistory}>
                     <Route
                         path='/'
