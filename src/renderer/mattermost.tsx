@@ -5,10 +5,8 @@ import React from 'react';
 import {Store} from 'redux';
 import {Provider} from 'react-redux';
 import {Router, Route} from 'react-router-dom';
-import {browserHistory} from 'utils/browser_history';
 
 import {GET_CONFIGURATION, QUIT, RELOAD_CONFIGURATION, SET_ACTIVE_VIEW} from 'common/communication';
-import reduxStore from 'stores/redux_store.jsx';
 import {CombinedConfig} from 'types/config';
 
 import('mattermost_webapp/styles');
@@ -31,20 +29,23 @@ const updateWebsocket = (websocketURL: string) => {
 
 type State = {
     config?: CombinedConfig;
-    store?: Store<any>;
     activeServerName?: string;
     activeTabName?: string;
 }
 export class MattermostApp extends React.PureComponent<Record<string, never>, State> {
+    browserHistory: any;
+    store?: Store<any>;
+
     constructor(props: Record<string, never>) {
         super(props);
         this.state = {};
     }
 
     async componentDidMount() {
-        const config = await this.setInitialConfig();
-        await this.setInitialStore(config);
-        reduxStore.setReplacementCallback(this.onReplaceStore);
+        const registry = await import('mattermost_webapp/registry');
+        this.browserHistory = registry.getComponent('utils/browser_history');
+        this.store = (await import('mattermost_webapp/store')).default;
+        await this.setInitialConfig();
 
         window.ipcRenderer.on('synchronize-config', () => {
             this.reloadConfig();
@@ -78,20 +79,6 @@ export class MattermostApp extends React.PureComponent<Record<string, never>, St
         updateWebsocket(websocketURL);
     }
 
-    setInitialStore = async (config: CombinedConfig) => {
-        const store = await reduxStore.initialize(config);
-        this.setState({store});
-    }
-
-    onReplaceStore = (newStore?: Store<any>) => {
-        if (newStore) {
-            this.setState({store: undefined}, () => {
-                browserHistory.push('/');
-                this.setState({store: newStore});
-            });
-        }
-    }
-
     setInitialConfig = async () => {
         const config = await this.requestConfig(true);
         this.setState({config});
@@ -118,13 +105,17 @@ export class MattermostApp extends React.PureComponent<Record<string, never>, St
     };
 
     render() {
-        if (!this.state.store || !browserHistory) {
+        if (!this.state.config) {
+            return null;
+        }
+
+        if (!this.store || !this.browserHistory) {
             return null;
         }
 
         return (
-            <Provider store={this.state.store}>
-                <Router history={browserHistory}>
+            <Provider store={this.store}>
+                <Router history={this.browserHistory}>
                     <Route
                         path='/'
                         component={MattermostRoot}

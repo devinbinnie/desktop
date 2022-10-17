@@ -15,17 +15,26 @@ import MainPage from './components/MainPage';
 import MattermostApp from './mattermost';
 import IntlProvider from './intl_provider';
 
+import {browserHistory} from './browser_history';
+
 type State = {
     config?: CombinedConfig;
 }
 
 class Root extends React.PureComponent<Record<string, never>, State> {
+    registry?: {
+        getComponent: (name: string) => any;
+        setComponent: (name: string, component: any) => boolean;
+    };
+
     constructor(props: Record<string, never>) {
         super(props);
         this.state = {};
     }
 
     async componentDidMount() {
+        this.registry = await import('mattermost_webapp/registry');
+        this.registry?.setComponent('utils/browser_history', browserHistory);
         await this.setInitialConfig();
 
         window.ipcRenderer.on('synchronize-config', () => {

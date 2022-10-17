@@ -101,11 +101,6 @@ module.exports = merge(base, {
                     eager: true,
                     import: 'redux_store',
                 },
-                'utils/browser_history': {
-                    singleton: true,
-                    eager: true,
-                    import: './src/renderer/browser_history.tsx',
-                },
             },
         }),
         new HtmlWebpackPlugin({

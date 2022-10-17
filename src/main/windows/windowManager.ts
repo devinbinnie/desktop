@@ -255,7 +255,7 @@ export class WindowManager {
 
         // Another workaround since the window doesn't update properly under Linux for some reason
         // See above comment
-        setTimeout(this.setCurrentViewBounds, 10, bounds);
+        //setTimeout(this.setCurrentViewBounds, 10, bounds);
         this.viewManager.setLoadingScreenBounds();
         this.teamDropdown?.updateWindowBounds();
         this.downloadsDropdown?.updateWindowBounds();
@@ -479,7 +479,7 @@ export class WindowManager {
         }
     }
 
-    handleOnBeforeRequest = (details: Electron.OnBeforeRequestListenerDetails, callback: (response: Electron.Response) => void) => {
+    handleOnBeforeRequest = (details: Electron.OnBeforeRequestListenerDetails, callback: (response: Electron.CallbackResponse) => void) => {
         log.silly('WindowManager.handleOnBeforeRequest', details.url);
 
         // Anything in the local folder is fine
@@ -577,6 +577,8 @@ export class WindowManager {
 
     handleOnHeadersReceived = (details: Electron.OnHeadersReceivedListenerDetails, callback: (headersReceivedResponse: Electron.HeadersReceivedResponse) => void) => {
         log.silly('WindowManager.handleOnHeadersReceived', details.url, details.responseHeaders);
+
+        downloadsManager.webRequestOnHeadersReceivedHandler(details);
 
         const server = urlUtils.getView(details.url, Config.teams);
         if (!server) {
