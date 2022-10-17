@@ -20,5 +20,8 @@ declare global {
         timers: {
             setImmediate: typeof setImmediate;
         };
+        mattermost: {
+            getUrl: Promise<string>;
+        };
     }
 }

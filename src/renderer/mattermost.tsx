@@ -21,8 +21,9 @@ MattermostRoot.displayName = 'Root';
 
 const updateWebsocket = (websocketURL: string) => {
     const NativeWebSocket = window.WebSocket;
-    // eslint-disable-next-line func-names
-    window.WebSocket = function(url: string) {
+    // eslint-disable-next-line func-names, @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    window.WebSocket = (url: string) => {
         return new NativeWebSocket(url.replace('file:///', websocketURL));
     };
 };
@@ -43,8 +44,13 @@ export class MattermostApp extends React.PureComponent<Record<string, never>, St
 
     async componentDidMount() {
         const registry = await import('mattermost_webapp/registry');
-        this.browserHistory = registry.getComponent('utils/browser_history');
+        this.browserHistory = registry.getModule('utils/browser_history');
         this.store = (await import('mattermost_webapp/store')).default;
+
+        const serverURL = await window.mattermost.getUrl;
+        const websocketURL = serverURL.replace(/^http(s*):(.+)/g, 'ws$1:$2/');
+        updateWebsocket(websocketURL);
+
         await this.setInitialConfig();
 
         window.ipcRenderer.on('synchronize-config', () => {

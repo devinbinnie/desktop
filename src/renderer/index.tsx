@@ -23,8 +23,8 @@ type State = {
 
 class Root extends React.PureComponent<Record<string, never>, State> {
     registry?: {
-        getComponent: (name: string) => any;
-        setComponent: (name: string, component: any) => boolean;
+        getModule: (name: string) => any;
+        setModule: (name: string, component: any) => boolean;
     };
 
     constructor(props: Record<string, never>) {
@@ -34,7 +34,7 @@ class Root extends React.PureComponent<Record<string, never>, State> {
 
     async componentDidMount() {
         this.registry = await import('mattermost_webapp/registry');
-        this.registry?.setComponent('utils/browser_history', browserHistory);
+        this.registry?.setModule('utils/browser_history', browserHistory);
         await this.setInitialConfig();
 
         window.ipcRenderer.on('synchronize-config', () => {

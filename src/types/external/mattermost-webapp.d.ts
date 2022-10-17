@@ -12,12 +12,16 @@ declare module 'mattermost_webapp/crtWatcher' {
     export default CrtPostsWatcher;
 }
 
+declare module 'mattermost_webapp/registry' {
+    export const getModule: (name: string) => unknown;
+    export const setModule: (name: string, component: unknown) => boolean;
+}
+
 declare module 'mattermost_webapp/store' {
-    const store: any;
+    const store: Store<any>;
 
     export default store;
 }
 
 declare module 'mattermost_webapp/styles';
 declare module 'history';
-declare module 'utils/browser_history';

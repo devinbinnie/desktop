@@ -919,7 +919,7 @@ export class WindowManager {
     }
 
     handleGetCurrentURL = () => {
-        return '';
+        return Config.teams.find((team) => team.name === this.currentServerName)?.url;
     }
 }
 
