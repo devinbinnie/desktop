@@ -21,7 +21,7 @@ const WEBSERVER_PORT = process.env.WEBSERVER_PORT ?? 9001;
 const getRemoteEntry = (resolve) => {
     const script = document.createElement('script');
     window.mattermost.getUrl.then((url) => {
-        script.src = `${url}/static/remoteEntry.js`;
+        script.src = `${url}/static/remote_entry.js`;
         script.onload = () => {
             // the injected script has loaded and is available on window
             // we can now resolve this Promise
