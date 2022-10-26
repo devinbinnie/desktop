@@ -2,30 +2,19 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import {Store} from 'redux';
-import {Provider} from 'react-redux';
-import {Router, Route} from 'react-router-dom';
 
 import {GET_CONFIGURATION, QUIT, RELOAD_CONFIGURATION, SET_ACTIVE_VIEW} from 'common/communication';
 import {CombinedConfig} from 'types/config';
 
 import('mattermost_webapp/styles');
 
-const LazyRoot = React.lazy(() => import('mattermost_webapp/root'));
-const MattermostRoot = (props: any) => (
+const LazyApp = React.lazy(() => import('mattermost_webapp/app'));
+const MattermostAppComponent = (props: any) => (
     <React.Suspense fallback={<div>{'Loading...'}</div>}>
-        <LazyRoot {...props}/>
+        <LazyApp {...props}/>
     </React.Suspense>
 );
-MattermostRoot.displayName = 'Root';
-
-const LazyCRTPostsChannelResetWatcher = React.lazy(() => import('mattermost_webapp/crtWatcher'));
-const MattermostCRTPostsChannelResetWatcher = (props: any) => (
-    <React.Suspense fallback={<div>{'Loading...'}</div>}>
-        <LazyCRTPostsChannelResetWatcher {...props}/>
-    </React.Suspense>
-);
-MattermostCRTPostsChannelResetWatcher.displayName = 'CRTPostsChannelResetWatcher';
+MattermostAppComponent.displayName = 'App';
 
 const updateWebsocket = (websocketURL: string) => {
     const NativeWebSocket = window.WebSocket;
@@ -42,19 +31,12 @@ type State = {
     activeTabName?: string;
 }
 export class MattermostApp extends React.PureComponent<Record<string, never>, State> {
-    browserHistory: any;
-    store?: Store<any>;
-
     constructor(props: Record<string, never>) {
         super(props);
         this.state = {};
     }
 
     async componentDidMount() {
-        const registry = await import('mattermost_webapp/registry');
-        this.browserHistory = registry.getModule('utils/browser_history');
-        this.store = (await import('mattermost_webapp/store')).default;
-
         const serverURL = await window.mattermost.getUrl;
         const websocketURL = serverURL.replace(/^http(s*):(.+)/g, 'ws$1:$2/');
         updateWebsocket(websocketURL);
@@ -123,20 +105,8 @@ export class MattermostApp extends React.PureComponent<Record<string, never>, St
             return null;
         }
 
-        if (!this.store || !this.browserHistory) {
-            return null;
-        }
-
         return (
-            <Provider store={this.store}>
-                <MattermostCRTPostsChannelResetWatcher/>
-                <Router history={this.browserHistory}>
-                    <Route
-                        path='/'
-                        component={MattermostRoot}
-                    />
-                </Router>
-            </Provider>
+            <MattermostAppComponent/>
         );
     }
 }

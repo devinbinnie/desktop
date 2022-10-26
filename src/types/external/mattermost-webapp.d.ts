@@ -1,20 +1,14 @@
 // Copyright (c) 2016-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
-declare module 'mattermost_webapp/root' {
-    const Root: React.ComponentType;
+declare module 'mattermost_webapp/app' {
+    const App: React.ComponentType;
 
-    export default Root;
-}
-
-declare module 'mattermost_webapp/crtWatcher' {
-    const CrtPostsWatcher: React.ComponentType;
-
-    export default CrtPostsWatcher;
+    export default App;
 }
 
 declare module 'mattermost_webapp/registry' {
-    export const getModule: (name: string) => unknown;
-    export const setModule: (name: string, component: unknown) => boolean;
+    export const getModule: <T>(name: string) => T;
+    export const setModule: <T>(name: string, component: T) => boolean;
 }
 
 declare module 'mattermost_webapp/store' {
