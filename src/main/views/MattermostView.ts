@@ -22,6 +22,7 @@ import log from 'electron-log';
 import {Headers} from 'types/webRequest';
 
 import {GET_CURRENT_SERVER_URL, SETUP_INITIAL_COOKIES, SET_COOKIE} from 'common/communication';
+import {TAB_BAR_HEIGHT} from 'common/utils/constants';
 import {MattermostServer} from 'common/servers/MattermostServer';
 import {TabView} from 'common/tabs/TabView';
 
@@ -54,7 +55,7 @@ export class MattermostView extends EventEmitter {
         this.isLoggedIn = false;
         this.isAtRoot = false;
 
-        const preload = getLocalPreload('mainWindow.js');
+        const preload = getLocalPreload('preload.js');
         this.view = new BrowserView({
             ...options,
             webPreferences: {
@@ -82,7 +83,7 @@ export class MattermostView extends EventEmitter {
 
         WebRequestManager.rewriteURL(
             new RegExp(`file:///${path.resolve('/').replace('\\', '/')}(\\?.+)?$`, 'g'),
-            `${getLocalURLString('index.html')}$1`,
+            `${getLocalURLString('mattermost.html')}$1`,
             this.view.webContents.id,
         );
 
@@ -175,7 +176,7 @@ export class MattermostView extends EventEmitter {
     }
 
     private addCSPHeader = (details: OnHeadersReceivedListenerDetails) => {
-        if (details.url === getLocalURLString('index.html')) {
+        if (details.url === getLocalURLString('mattermost.html')) {
             return {
                 'Content-Security-Policy': [makeCSPHeader(this.tab.server.url, this.serverInfo.remoteInfo.cspHeader)],
             };
@@ -188,7 +189,7 @@ export class MattermostView extends EventEmitter {
         log.debug('MattermostView.load', `${url}`);
 
         // TODO
-        const localURL = getLocalURLString('index.html');
+        const localURL = getLocalURLString('mattermost.html');
         this.view.webContents.loadURL(localURL);
     };
 
@@ -229,10 +230,12 @@ export class MattermostView extends EventEmitter {
 
         // TODO
         this.window.addBrowserView(this.view);
+        const bounds = this.window.getBounds();
         this.view.setBounds({
-            ...this.window.getBounds(),
+            height: bounds.height - TAB_BAR_HEIGHT,
+            width: bounds.width,
             x: 0,
-            y: 0,
+            y: TAB_BAR_HEIGHT,
         });
         this.isVisible = true;
     };

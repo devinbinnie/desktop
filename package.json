@@ -27,6 +27,7 @@
     "build": "npm-run-all build:*",
     "build:main": "webpack-cli --config webpack.config.main.js",
     "build:renderer": "webpack-cli --config webpack.config.renderer.js",
+    "build:renderer-mattermost": "webpack-cli --config webpack.config.renderer.mattermost.js",
     "build-prod": "cross-env NODE_ENV=production npm-run-all check-build-config build",
     "build-prod-upgrade": "cross-env NODE_ENV=production CAN_UPGRADE=true npm-run-all check-build-config build",
     "build-robotjs": "cross-env CL='/std:c++17' electron-rebuild -m ./node_modules/robotjs",

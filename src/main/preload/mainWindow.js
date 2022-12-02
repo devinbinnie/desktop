@@ -140,12 +140,6 @@ contextBridge.exposeInMainWorld('desktop', {
     onFocusThreeDotMenu: (listener) => ipcRenderer.on(FOCUS_THREE_DOT_MENU, () => listener()),
 });
 
-contextBridge.exposeInMainWorld('mattermost', {
-    getUrl: ipcRenderer.invoke(GET_CURRENT_SERVER_URL),
-    setupCookies: ipcRenderer.invoke(SETUP_INITIAL_COOKIES),
-    setCookie: (cookie) => ipcRenderer.send(SET_COOKIE, cookie),
-});
-
 window.addEventListener('message', async (event) => {
     switch (event.data.type) {
     case GET_LANGUAGE_INFORMATION:

@@ -2,8 +2,6 @@
 // Copyright (c) 2016-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-'use strict';
-
 /* eslint-disable no-magic-numbers */
 
 import {contextBridge, ipcRenderer, webFrame} from 'electron';
@@ -29,13 +27,15 @@ import {
     GET_VIEW_WEBCONTENTS_ID,
     DISPATCH_GET_DESKTOP_SOURCES,
     DESKTOP_SOURCES_RESULT,
-    VIEW_FINISHED_RESIZING,
     CALLS_JOIN_CALL,
     CALLS_JOINED_CALL,
     CALLS_LEAVE_CALL,
     DESKTOP_SOURCES_MODAL_REQUEST,
     CALLS_WIDGET_SHARE_SCREEN,
     CLOSE_DOWNLOADS_DROPDOWN,
+    GET_CURRENT_SERVER_URL,
+    SETUP_INITIAL_COOKIES,
+    SET_COOKIE,
 } from 'common/communication';
 
 const UNREAD_COUNT_INTERVAL = 1000;
@@ -345,6 +345,8 @@ ipcRenderer.on(CALLS_JOINED_CALL, (event, message) => {
 
 /* eslint-enable no-magic-numbers */
 
-window.addEventListener('resize', () => {
-    ipcRenderer.send(VIEW_FINISHED_RESIZING);
+contextBridge.exposeInMainWorld('mattermost', {
+    getUrl: ipcRenderer.invoke(GET_CURRENT_SERVER_URL),
+    setupCookies: ipcRenderer.invoke(SETUP_INITIAL_COOKIES),
+    setCookie: (cookie) => ipcRenderer.send(SET_COOKIE, cookie),
 });
