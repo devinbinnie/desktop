@@ -10,6 +10,7 @@ import {
     BrowserViewConstructorOptions,
     BrowserWindow,
     CookiesSetDetails,
+    HeadersReceivedResponse,
     ipcMain,
     IpcMainEvent,
     OnBeforeSendHeadersListenerDetails,
@@ -42,6 +43,8 @@ export class MattermostView extends EventEmitter {
     isLoggedIn: boolean;
 
     cookies: CookiesSetDetails[];
+    corsHeaders: string[];
+    corsMethods: string[];
 
     constructor(tab: TabView, serverInfo: ServerInfo, window: BrowserWindow, options: BrowserViewConstructorOptions) {
         super();
@@ -62,7 +65,6 @@ export class MattermostView extends EventEmitter {
                 preload,
             },
         });
-        this.view.webContents.openDevTools({mode: 'detach'});
 
         // Don't cache the remote_entry script
         WebRequestManager.onRequestHeaders(this.addNoCacheForRemoteEntryRequest, this.view.webContents.id);
@@ -70,19 +72,13 @@ export class MattermostView extends EventEmitter {
         // URL handling
         ipcMain.handle(GET_CURRENT_SERVER_URL, () => `${this.tab.server.url}`);
         WebRequestManager.rewriteURL(
-            new RegExp(`file:///${path.resolve('/').replace('\\', '/').replace('/', '')}(${this.tab.server.url.pathname})?/(api|static|plugins)/(.*)`, 'g'),
+            new RegExp(`mm-desktop://${this.tab.server.url.host}(${this.tab.server.url.pathname})?/(api|static|plugins)/(.*)`, 'g'),
             `${this.tab.server.url}/$2/$3`,
             this.view.webContents.id,
         );
 
         WebRequestManager.rewriteURL(
-            new RegExp(`file://(${this.tab.server.url.pathname})?/(api|static|plugins)/(.*)`, 'g'),
-            `${this.tab.server.url}/$2/$3`,
-            this.view.webContents.id,
-        );
-
-        WebRequestManager.rewriteURL(
-            new RegExp(`file:///${path.resolve('/').replace('\\', '/')}(\\?.+)?$`, 'g'),
+            new RegExp(`mm-desktop://${this.tab.server.url.host}${path.resolve('/').replace('\\', '/')}(\\?.+)?$`, 'g'),
             `${getLocalURLString('mattermost.html')}$1`,
             this.view.webContents.id,
         );
@@ -97,7 +93,64 @@ export class MattermostView extends EventEmitter {
         WebRequestManager.onResponseHeaders(this.extractCookies, this.view.webContents.id);
 
         // Websocket
-        WebRequestManager.onRequestHeaders(this.addOriginForWebsocket);
+        WebRequestManager.onRequestHeaders(this.addOriginForWebsocket, this.view.webContents.id);
+
+        // CORS
+        this.corsHeaders = [];
+        this.corsMethods = [];
+        WebRequestManager.onRequestHeaders(this.extractCORSHeaders, this.view.webContents.id);
+        WebRequestManager.onResponseHeaders(this.addCORSResponseHeader, this.view.webContents.id);
+    }
+
+    private extractCORSHeaders = (details: OnBeforeSendHeadersListenerDetails) => {
+        if (!details.url.match(new RegExp(`${this.tab.server.url.origin}/(.+)`))) {
+            return {} as Headers;
+        }
+
+        if (details.method !== 'OPTIONS') {
+            return {} as Headers;
+        }
+
+        if (details.requestHeaders.Origin !== `mm-desktop://${this.tab.server.url.host}`) {
+            return {} as Headers;
+        }
+
+        const headers = [...details.requestHeaders['Access-Control-Request-Headers'].split(',')];
+        headers.forEach((header) => {
+            if (!this.corsHeaders.includes(header)) {
+                this.corsHeaders.push(header);
+            }
+        });
+        if (!this.corsMethods.includes(details.requestHeaders['Access-Control-Request-Method'])) {
+            this.corsMethods.push(details.requestHeaders['Access-Control-Request-Method']);
+        }
+
+        return {};
+    }
+
+    private addCORSResponseHeader = (details: OnHeadersReceivedListenerDetails): HeadersReceivedResponse => {
+        if (!details.url.match(new RegExp(`${this.tab.server.url.origin}/(.+)`))) {
+            return {};
+        }
+
+        if (details.method !== 'OPTIONS') {
+            return {
+                responseHeaders: {
+                    'Access-Control-Allow-Credentials': ['true'],
+                    'Access-Control-Allow-Origin': [`mm-desktop://${this.tab.server.url.host}`],
+                },
+            };
+        }
+
+        return {
+            statusLine: 'HTTP/1.1 204 No Content',
+            responseHeaders: {
+                'Access-Control-Allow-Credentials': ['true'],
+                'Access-Control-Allow-Headers': [...this.corsHeaders],
+                'Access-Control-Allow-Origin': [`mm-desktop://${this.tab.server.url.host}`],
+                'Access-Control-Allow-Methods': [...this.corsMethods],
+            },
+        };
     }
 
     private addNoCacheForRemoteEntryRequest = (details: OnBeforeSendHeadersListenerDetails) => {
@@ -124,7 +177,9 @@ export class MattermostView extends EventEmitter {
         }
 
         return {
-            Origin: `${this.tab.server.url.protocol}//${this.tab.server.url.host}`,
+            requestHeaders: {
+                Origin: `${this.tab.server.url.protocol}//${this.tab.server.url.host}`,
+            },
         };
     }
 
@@ -137,7 +192,9 @@ export class MattermostView extends EventEmitter {
 
     private appendCookies = (details: OnBeforeSendHeadersListenerDetails) => {
         return {
-            Cookie: `${details.requestHeaders.Cookie ? `${details.requestHeaders.Cookie}; ` : ''}${this.cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join('; ')}`,
+            requestHeaders: {
+                Cookie: `${details.requestHeaders.Cookie ? `${details.requestHeaders.Cookie}; ` : ''}${this.cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join('; ')}`,
+            },
         };
     }
 
@@ -176,9 +233,11 @@ export class MattermostView extends EventEmitter {
     }
 
     private addCSPHeader = (details: OnHeadersReceivedListenerDetails) => {
-        if (details.url === getLocalURLString('mattermost.html')) {
+        if (details.url === this.getLocalProtocolURL('mattermost.html')) {
             return {
-                'Content-Security-Policy': [makeCSPHeader(this.tab.server.url, this.serverInfo.remoteInfo.cspHeader)],
+                responseHeaders: {
+                    'Content-Security-Policy': [makeCSPHeader(this.tab.server.url, this.serverInfo.remoteInfo.cspHeader)],
+                },
             };
         }
 
@@ -188,10 +247,14 @@ export class MattermostView extends EventEmitter {
     load = (url?: string | URL) => {
         log.debug('MattermostView.load', `${url}`);
 
-        // TODO
-        const localURL = getLocalURLString('mattermost.html');
-        this.view.webContents.loadURL(localURL);
+        // TODO'
+        this.view.webContents.loadURL(this.getLocalProtocolURL('mattermost.html'));
     };
+
+    getLocalProtocolURL = (urlPath: string) => {
+        const localURL = getLocalURLString(urlPath);
+        return localURL.replace(/file:\/\/\//, `mm-desktop://${this.tab.server.url.host}/`);
+    }
 
     updateServerInfo = (srv: MattermostServer) => {
         log.debug('MattermostView.updateServerInfo', srv);
