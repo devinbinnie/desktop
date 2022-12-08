@@ -73,8 +73,8 @@ export class WebContentsEventManager {
                 return;
             }
 
-            log.info(`Prevented desktop from navigating to: ${url}`);
-            event.preventDefault();
+            // log.info(`Prevented desktop from navigating to: ${url}`);
+            // event.preventDefault();
         };
     };
 

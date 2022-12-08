@@ -33,9 +33,9 @@ export function getWindowBoundaries(win: BrowserWindow, hasBackBar = false) {
 export function getAdjustedWindowBoundaries(width: number, height: number, hasBackBar = false) {
     return {
         x: 0,
-        y: TAB_BAR_HEIGHT + (hasBackBar ? BACK_BAR_HEIGHT : 0),
+        y: 0,
         width,
-        height: height - TAB_BAR_HEIGHT - (hasBackBar ? BACK_BAR_HEIGHT : 0),
+        height,
     };
 }
 

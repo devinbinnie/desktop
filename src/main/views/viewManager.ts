@@ -183,7 +183,7 @@ export class ViewManager {
                 delete this.currentView;
                 this.showInitial();
             } else {
-                this.mainWindow.webContents.send(SET_ACTIVE_VIEW);
+                this.sendToAllViews(SET_ACTIVE_VIEW);
             }
         }
 
@@ -193,7 +193,7 @@ export class ViewManager {
             if (view) {
                 this.currentView = view.name;
                 this.showByName(view.name);
-                this.mainWindow.webContents.send(SET_ACTIVE_VIEW, view.tab.server.name, view.tab.type);
+                this.sendToAllViews(SET_ACTIVE_VIEW, view.tab.server.name, view.tab.type);
             }
         } else {
             this.showInitial();
@@ -216,7 +216,7 @@ export class ViewManager {
                 }
             }
         } else {
-            this.mainWindow.webContents.send(SET_ACTIVE_VIEW, null, null);
+            this.sendToAllViews(SET_ACTIVE_VIEW, null, null);
             ipcMain.emit(MAIN_WINDOW_SHOWN);
         }
     }
@@ -243,7 +243,7 @@ export class ViewManager {
                     this.showLoadingScreen();
                 }
             }
-            newView.window.webContents.send(SET_ACTIVE_VIEW, newView.tab.server.name, newView.tab.type);
+            this.sendToAllViews(SET_ACTIVE_VIEW, newView.tab.server.name, newView.tab.type);
             ipcMain.emit(SET_ACTIVE_VIEW, true, newView.tab.server.name, newView.tab.type);
             if (newView.isReady()) {
                 ipcMain.emit(UPDATE_LAST_ACTIVE, true, newView.tab.server.name, newView.tab.type);

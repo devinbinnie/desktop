@@ -411,7 +411,7 @@ export class WindowManager {
             }
             return;
         }
-        this.mainWindow!.webContents.send(channel, ...args);
+        this.viewManager?.sendToAllViews(channel, ...args);
         if (this.settingsWindow && this.settingsWindow.isVisible()) {
             try {
                 this.settingsWindow.webContents.send(channel, ...args);
@@ -636,7 +636,7 @@ export class WindowManager {
     focusThreeDotMenu = () => {
         if (this.mainWindow) {
             this.mainWindow.webContents.focus();
-            this.mainWindow.webContents.send(FOCUS_THREE_DOT_MENU);
+            this.viewManager?.sendToAllViews(FOCUS_THREE_DOT_MENU);
         }
     }
 

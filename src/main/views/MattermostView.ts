@@ -20,13 +20,14 @@ import log from 'electron-log';
 
 import {Headers} from 'types/webRequest';
 
-import {GET_CURRENT_SERVER_URL, SETUP_INITIAL_COOKIES, SET_COOKIE} from 'common/communication';
+import {LOAD_SUCCESS, SET_VIEW_OPTIONS} from 'common/communication';
 import {MattermostServer} from 'common/servers/MattermostServer';
 import {TabView} from 'common/tabs/TabView';
 
 import {ServerInfo} from 'main/server/serverInfo';
-import {createCookieSetDetailsFromCookieString, getLocalPreload, getLocalURLString, makeCSPHeader} from 'main/utils';
+import {createCookieSetDetailsFromCookieString, getLocalPreload, getLocalURLString, getWindowBoundaries, makeCSPHeader} from 'main/utils';
 import WebRequestManager from 'main/webRequest/webRequestManager';
+import WindowManager from 'main/windows/windowManager';
 
 export class MattermostView extends EventEmitter {
     // TODO
@@ -196,21 +197,94 @@ export class MattermostView extends EventEmitter {
         return Boolean(this.cookies.get('MMAUTHTOKEN')?.value);
     }
 
+    load = (someURL?: string | URL) => {
+        log.debug('MattermostView.load', `${someURL}`);
+
         // TODO
-        const localURL = getLocalURLString('index.html');
-        this.view.webContents.loadURL(localURL);
+
+        // if (!this.tab) {
+        //     return;
+        // }
+
+        // let loadURL: string;
+        // if (someURL) {
+        //     const parsedURL = urlUtils.parseURL(someURL);
+        //     if (parsedURL) {
+        //         loadURL = parsedURL.toString();
+        //     } else {
+        //         log.error('Cannot parse provided url, using current server url', someURL);
+        //         loadURL = this.tab.url.toString();
+        //     }
+        // } else {
+        //     loadURL = this.tab.url.toString();
+        // }
+        const url = `${getLocalURLString('index.html')}#${this.tab.url.toString().replace(new RegExp(`${this.serverUrl}(/)?`), '/')}`;
+        const loading = this.view.webContents.loadURL(url); //, {userAgent: composeUserAgent()});
+        loading.then(this.loadSuccess(url));
+        // ).catch((err) => {
+        //     if (err.code && err.code.startsWith('ERR_CERT')) {
+        //         WindowManager.sendToRenderer(LOAD_FAILED, this.tab.name, err.toString(), loadURL.toString());
+        //         this.emit(LOAD_FAILED, this.tab.name, err.toString(), loadURL.toString());
+        //         log.info(`[${Util.shorten(this.tab.name)}] Invalid certificate, stop retrying until the user decides what to do: ${err}.`);
+        //         this.status = Status.ERROR;
+        //         return;
+        //     }
+        //     this.loadRetry(loadURL, err);
+        // });
     };
 
-    updateServerInfo = (srv: MattermostServer) => {
-        log.debug('MattermostView.updateServerInfo', srv);
+    private loadSuccess = (loadURL: string) => {
+        return () => {
+            //log.info(`[${Util.shorten(this.tab.name)}] finished loading ${loadURL}`);
+            WindowManager.sendToRenderer(LOAD_SUCCESS, this.tab.name);
+            //this.maxRetries = MAX_SERVER_RETRIES;
+            // if (this.status === Status.LOADING) {
+            //     ipcMain.on(UNREAD_RESULT, this.handleFaviconIsUnread);
+            //     this.updateMentionsFromTitle(this.view.webContents.getTitle());
+            //     this.findUnreadState(null);
+            // }
+            // this.status = Status.WAITING_MM;
+            // this.removeLoading = setTimeout(this.setInitialized, MAX_LOADING_SCREEN_SECONDS, true);
+            this.emit(LOAD_SUCCESS, this.tab.name, loadURL);
+            this.setBounds(getWindowBoundaries(this.window));
+        };
+    }
 
-        // TODO
+    updateServerInfo = (srv: MattermostServer) => {
+        log.info('MattermostView.updateServerInfo', srv);
+
+        this.tab.server = srv;
+        const newServerInfo = new ServerInfo(srv);
+        newServerInfo.promise.then(() => {
+            this.serverInfo = newServerInfo;
+        });
+        this.view.webContents.send(SET_VIEW_OPTIONS, this.tab.name, this.tab.shouldNotify);
     };
 
     destroy = () => {
         log.debug('MattermostView.destroy');
 
         // TODO
+
+        // WebContentsEventManager.removeWebContentsListeners(this.view.webContents.id);
+        // appState.updateMentions(this.tab.name, 0, false);
+        if (this.window) {
+            this.window.removeBrowserView(this.view);
+        }
+
+        // workaround to eliminate zombie processes
+        // https://github.com/mattermost/desktop/pull/1519
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        this.view.webContents.destroy();
+
+        this.isVisible = false;
+        // if (this.retryLoad) {
+        //     clearTimeout(this.retryLoad);
+        // }
+        // if (this.removeLoading) {
+        //     clearTimeout(this.removeLoading);
+        // }
     };
 
     isErrored = () => {
@@ -228,22 +302,36 @@ export class MattermostView extends EventEmitter {
     };
 
     reload = () => {
-        log.debug('MattermostView.reload');
+        log.info('MattermostView.reload');
 
-        // TODO
+        this.resetLoadingStatus();
+        this.load();
     };
 
-    show = () => {
-        log.debug('MattermostView.show');
+    show = (requestedVisibility = true) => {
+        log.info('MattermostView.show', this.tab.name, requestedVisibility);
 
         // TODO
-        this.window.addBrowserView(this.view);
-        this.view.setBounds({
-            ...this.window.getBounds(),
-            x: 0,
-            y: 0,
-        });
-        this.isVisible = true;
+        // this.window.addBrowserView(this.view);
+        // this.view.setBounds({
+        //     ...this.window.getBounds(),
+        //     x: 0,
+        //     y: 0,
+        // });
+        // this.isVisible = true;
+
+        // this.hasBeenShown = true;
+        const request = requestedVisibility;
+        if (request && !this.isVisible) {
+            this.window.addBrowserView(this.view);
+            this.setBounds(getWindowBoundaries(this.window));
+            // if (this.status === Status.READY) {
+            //     this.focus();
+            // }
+        } else if (!request && this.isVisible) {
+            this.window.removeBrowserView(this.view);
+        }
+        this.isVisible = request;
     };
 
     hide = () => this.show(false);
