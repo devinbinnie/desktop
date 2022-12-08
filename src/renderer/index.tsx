@@ -7,7 +7,7 @@ import 'renderer/css/index.scss';
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-import {createHashHistory, History} from 'history';
+import {getHistory} from './browserHistory';
 
 import {CombinedConfig, Team} from 'types/config';
 
@@ -41,7 +41,7 @@ class Root extends React.PureComponent<Record<string, never>, State> {
 
     async componentDidMount() {
         this.registry = await import('mattermost_webapp/registry');
-        this.registry?.setModule<History>('utils/browser_history', createHashHistory());
+        this.registry?.setModule<History>('utils/browser_history', getHistory());
 
         // Websocket site url handling
         const currentURL = await window.mattermost.getUrl;

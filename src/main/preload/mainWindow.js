@@ -59,6 +59,7 @@ import {
     GET_CURRENT_SERVER_URL,
     SETUP_INITIAL_COOKIES,
     SET_COOKIE,
+    BROWSER_HISTORY_PUSH,
 } from 'common/communication';
 
 console.log('Preload initialized');
@@ -144,6 +145,9 @@ contextBridge.exposeInMainWorld('mattermost', {
     getUrl: ipcRenderer.invoke(GET_CURRENT_SERVER_URL),
     setupCookies: ipcRenderer.invoke(SETUP_INITIAL_COOKIES),
     setCookie: (cookie) => ipcRenderer.send(SET_COOKIE, cookie),
+    browserHistoryPush: (path) => ipcRenderer.send(BROWSER_HISTORY_PUSH, path),
+
+    onBrowserHistoryPush: (listener) => ipcRenderer.on(BROWSER_HISTORY_PUSH, (_, pathname) => listener(pathname)),
 });
 
 window.addEventListener('message', async (event) => {
