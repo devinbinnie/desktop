@@ -1,8 +1,6 @@
 // Copyright (c) 2016-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import path from 'path';
-
 import {EventEmitter} from 'events';
 
 import {
@@ -127,8 +125,8 @@ export class MattermostView extends EventEmitter {
         );
 
         WebRequestManager.rewriteURL(
-            new RegExp(`^mm-desktop://${this.tab.server.url.host}${path.resolve('/').replace('\\', '/')}(\\?.+)?$`, 'g'),
-            `${getLocalURLString('mattermost.html')}$1`,
+            new RegExp(`^mm-desktop://${this.tab.server.url.host}(/)?$`, 'g'),
+            `mm-desktop://${this.tab.server.url.host}/${getLocalURLString('mattermost.html').replace(/file:\/\/\//, '')}`,
             this.view.webContents.id,
         );
 
@@ -400,6 +398,10 @@ export class MattermostView extends EventEmitter {
 
     get urlTypeTuple(): TabTuple {
         return this.tab.urlTypeTuple;
+    }
+
+    getLocalTabURL = () => {
+        return `${this.getLocalProtocolURL('mattermost.html')}#${this.tab.url.toString().replace(new RegExp(`${this.tab.server.url}(/)?`), '/')}`;
     }
 
     getLocalProtocolURL = (urlPath: string) => {
