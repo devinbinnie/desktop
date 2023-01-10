@@ -309,7 +309,7 @@ export class MattermostView extends EventEmitter {
     }
 
     private addCSPHeader = (details: OnHeadersReceivedListenerDetails) => {
-        if (details.url.startsWith(this.getLocalProtocolURL('mattermost.html'))) {
+        if (details.url === this.convertURLToMMDesktop(this.tab.url).toString()) {
             return {
                 responseHeaders: {
                     'Content-Security-Policy': [makeCSPHeader(this.tab.server.url, this.serverInfo.remoteInfo.cspHeader)],
