@@ -99,6 +99,7 @@ import {
     initCookieManager,
     migrateMacAppStore,
 } from './utils';
+import { getLocalURLString } from 'main/utils';
 
 export const mainProtocol = protocols?.[0]?.schemes?.[0];
 
@@ -289,7 +290,16 @@ function initializeAfterAppReady() {
     const defaultSession = session.defaultSession;
 
     defaultSession.protocol.registerFileProtocol('mm-desktop', (request, callback) => {
-        callback(request.url.replace(/^mm-desktop:\/\/([A-Za-z0-9.]+)\//, '').replace(/#(.+)/, ''));
+        const parsedURL = urlUtils.parseURL(request.url);
+        if (parsedURL?.pathname === '/mattermost_bundle.js') {
+            callback(getLocalURLString('mattermost_bundle.js').replace(/file:\/\/\//, ''));
+            return;
+        }
+        if (parsedURL?.pathname === '/src_renderer_mattermost_tsx_bundle.js') {
+            callback(getLocalURLString('src_renderer_mattermost_tsx_bundle.js').replace(/file:\/\/\//, ''));
+            return;
+        }
+        callback(getLocalURLString('mattermost.html').replace(/file:\/\/\//, ''));
     });
 
     WebRequestManager.initialize();

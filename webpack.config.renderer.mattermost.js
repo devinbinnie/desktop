@@ -49,6 +49,7 @@ module.exports = merge(base, {
     },
     output: {
         path: path.resolve(__dirname, 'dist/renderer'),
+        publicPath: '/',
         filename: '[name]_bundle.js',
         assetModuleFilename: '[name].[ext]',
     },

@@ -1,8 +1,6 @@
 // Copyright (c) 2016-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import path from 'path';
-
 import {EventEmitter} from 'events';
 
 import {
@@ -123,12 +121,6 @@ export class MattermostView extends EventEmitter {
         WebRequestManager.rewriteURL(
             new RegExp(`^mm-desktop://${this.tab.server.url.host}(${this.tab.server.url.pathname})?/(api|static|plugins)/(.*)`, 'g'),
             `${this.tab.server.url}/$2/$3`,
-            this.view.webContents.id,
-        );
-
-        WebRequestManager.rewriteURL(
-            new RegExp(`^mm-desktop://${this.tab.server.url.host}${path.resolve('/').replace('\\', '/')}(\\?.+)?$`, 'g'),
-            `${getLocalURLString('mattermost.html')}$1`,
             this.view.webContents.id,
         );
 
@@ -345,6 +337,10 @@ export class MattermostView extends EventEmitter {
         return {} as Headers;
     };
 
+    private convertURLToMMDesktop = (url: URL) => {
+        return new URL(`${url}`.replace(/^http(s)?:/, 'mm-desktop:'));
+    }
+
     load = (someURL?: URL | string) => {
         if (!this.tab) {
             return;
@@ -354,13 +350,13 @@ export class MattermostView extends EventEmitter {
         if (someURL) {
             const parsedURL = urlUtils.parseURL(someURL);
             if (parsedURL) {
-                loadURL = `${this.getLocalProtocolURL('mattermost.html')}#${parsedURL.toString().replace(new RegExp(`${this.tab.server.url}(/)?`), '/')}`;
+                loadURL = this.convertURLToMMDesktop(parsedURL).toString();
             } else {
                 log.error('Cannot parse provided url, using current server url', someURL);
-                loadURL = `${this.getLocalProtocolURL('mattermost.html')}#${this.tab.url.toString().replace(new RegExp(`${this.tab.server.url}(/)?`), '/')}`;
+                loadURL = this.convertURLToMMDesktop(this.tab.url).toString();
             }
         } else {
-            loadURL = `${this.getLocalProtocolURL('mattermost.html')}#${this.tab.url.toString().replace(new RegExp(`${this.tab.server.url}(/)?`), '/')}`;
+            loadURL = this.convertURLToMMDesktop(this.tab.url).toString();
         }
         log.info(`[${Util.shorten(this.tab.name)}] Loading ${loadURL}`);
 
