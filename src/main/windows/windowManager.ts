@@ -88,8 +88,8 @@ export class WindowManager {
         ipcMain.on(LOADING_SCREEN_ANIMATION_FINISHED, this.handleLoadingScreenAnimationFinished);
         ipcMain.on(BROWSER_HISTORY_PUSH, this.handleBrowserHistoryPush);
         ipcMain.on(BROWSER_HISTORY_BUTTON, this.handleBrowserHistoryButton);
-        // ipcMain.on(APP_LOGGED_IN, this.handleAppLoggedIn);
-        // ipcMain.on(APP_LOGGED_OUT, this.handleAppLoggedOut);
+        ipcMain.on(APP_LOGGED_IN, this.handleAppLoggedIn);
+        ipcMain.on(APP_LOGGED_OUT, this.handleAppLoggedOut);
         ipcMain.handle(GET_VIEW_NAME, this.handleGetViewName);
         ipcMain.handle(GET_VIEW_WEBCONTENTS_ID, this.handleGetWebContentsId);
         ipcMain.on(DISPATCH_GET_DESKTOP_SOURCES, this.handleGetDesktopSources);
@@ -814,6 +814,7 @@ export class WindowManager {
         if (!viewName) {
             return;
         }
+        log.info('WindowManager.handleBrowserHistoryPush', viewName, pathName);
         const currentView = this.viewManager?.views.get(viewName);
         const cleanedPathName = urlUtils.cleanPathName(currentView?.tab.server.url.pathname || '', pathName);
         const redirectedViewName = urlUtils.getView(`${currentView?.tab.server.url}${cleanedPathName}`, Config.teams)?.name || viewName;
@@ -859,7 +860,7 @@ export class WindowManager {
     }
 
     handleAppLoggedIn = (event: IpcMainEvent, viewName: string) => {
-        log.debug('WindowManager.handleAppLoggedIn', viewName);
+        log.info('WindowManager.handleAppLoggedIn', viewName);
 
         const view = this.viewManager?.views.get(viewName);
         if (view && !view.isLoggedIn) {
@@ -869,7 +870,7 @@ export class WindowManager {
     }
 
     handleAppLoggedOut = (event: IpcMainEvent, viewName: string) => {
-        log.debug('WindowManager.handleAppLoggedOut', viewName);
+        log.info('WindowManager.handleAppLoggedOut', viewName);
 
         const view = this.viewManager?.views.get(viewName);
         if (view && view.isLoggedIn) {

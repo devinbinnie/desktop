@@ -115,8 +115,9 @@ export class ViewManager {
 
     reloadViewIfNeeded = (viewName: string) => {
         const view = this.views.get(viewName);
-        if (view && view.view.webContents.getURL() !== view.tab.url.toString() && !view.view.webContents.getURL().startsWith(view.tab.url.toString())) {
-            view.load(view.tab.url);
+        if (view && view.view.webContents.getURL() !== view.getLocalTabURL() && !view.view.webContents.getURL().startsWith(view.getLocalTabURL())) {
+            log.info('reloading view', view.name);
+            view.load();
         }
     }
 

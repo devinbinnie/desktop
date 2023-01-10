@@ -3,7 +3,7 @@
 
 import path from 'path';
 
-import {app, ipcMain, screen, session} from 'electron';
+import {app, ipcMain, protocol, screen, session} from 'electron';
 import installExtension, {REACT_DEVELOPER_TOOLS} from 'electron-devtools-installer';
 import isDev from 'electron-is-dev';
 import log from 'electron-log';
@@ -234,6 +234,16 @@ function initializeBeforeAppReady() {
     } else if (mainProtocol) {
         app.setAsDefaultProtocolClient(mainProtocol);
     }
+
+    protocol.registerSchemesAsPrivileged([
+        {
+            scheme: 'mm-desktop',
+            privileges: {
+                standard: true,
+                supportFetchAPI: true,
+            },
+        },
+    ]);
 }
 
 function initializeInterCommunicationEventListeners() {
@@ -277,6 +287,10 @@ function initializeAfterAppReady() {
     updateServerInfos(Config.teams);
     app.setAppUserModelId('Mattermost.Desktop'); // Use explicit AppUserModelID
     const defaultSession = session.defaultSession;
+
+    defaultSession.protocol.registerFileProtocol('mm-desktop', (request, callback) => {
+        callback(request.url.replace(/^mm-desktop:\/\/([A-Za-z0-9.]+)\//, '').replace(/#(.+)/, ''));
+    });
 
     WebRequestManager.initialize();
 
