@@ -114,9 +114,6 @@ export class MattermostView extends EventEmitter {
         this.view = new BrowserView(this.options);
         this.resetLoadingStatus();
 
-        // Don't cache the remote_entry script
-        WebRequestManager.onRequestHeaders(this.addNoCacheForRemoteEntryRequest, this.view.webContents.id);
-
         // URL handling
         WebRequestManager.rewriteURL(
             new RegExp(`^mm-desktop://${this.tab.server.url.host}(${this.tab.server.url.pathname})?/(api|static|plugins)/(.*)`, 'g'),
@@ -179,7 +176,7 @@ export class MattermostView extends EventEmitter {
     }
 
     private extractCORSHeaders = (details: OnBeforeSendHeadersListenerDetails) => {
-        if (!details.url.match(new RegExp(`${this.tab.server.url.origin}/(.+)`))) {
+        if (!details.url.startsWith(this.tab.server.url.origin)) {
             return {} as Headers;
         }
 
@@ -205,7 +202,7 @@ export class MattermostView extends EventEmitter {
     }
 
     private addCORSResponseHeader = (details: OnHeadersReceivedListenerDetails): HeadersReceivedResponse => {
-        if (!details.url.match(new RegExp(`^${this.tab.server.url.origin}/(.+)`))) {
+        if (!details.url.startsWith(this.tab.server.url.origin)) {
             return {};
         }
 
@@ -235,20 +232,6 @@ export class MattermostView extends EventEmitter {
             url = url.slice(0, url.length - 1);
         }
         return url;
-    }
-
-    private addNoCacheForRemoteEntryRequest = (details: OnBeforeSendHeadersListenerDetails) => {
-        log.silly('WindowManager.addNoCacheForRemoteEntry', details.requestHeaders);
-
-        if (!details.url.match(new RegExp(`${this.serverUrl}/static/remote_entry.js`))) {
-            return {} as Headers;
-        }
-
-        return {
-            requestHeaders: {
-                'Cache-Control': 'max-age=0',
-            },
-        };
     }
 
     private addOriginForWebsocket = (details: OnBeforeSendHeadersListenerDetails) => {
