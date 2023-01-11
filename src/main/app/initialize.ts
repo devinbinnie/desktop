@@ -54,6 +54,7 @@ import i18nManager from 'main/i18nManager';
 import parseArgs from 'main/ParseArgs';
 import TrustedOriginsStore from 'main/trustedOrigins';
 import {refreshTrayImages, setupTray} from 'main/tray/tray';
+import {getLocalURLString} from 'main/utils';
 import UserActivityMonitor from 'main/UserActivityMonitor';
 import WindowManager from 'main/windows/windowManager';
 import WebRequestManager from 'main/webRequest/webRequestManager';
@@ -99,7 +100,6 @@ import {
     initCookieManager,
     migrateMacAppStore,
 } from './utils';
-import { getLocalURLString } from 'main/utils';
 
 export const mainProtocol = protocols?.[0]?.schemes?.[0];
 
