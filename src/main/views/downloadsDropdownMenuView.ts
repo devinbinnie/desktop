@@ -2,8 +2,6 @@
 // See LICENSE.txt for license information.
 import {BrowserView, BrowserWindow, ipcMain, IpcMainEvent} from 'electron';
 
-import log from 'electron-log';
-
 import {CombinedConfig} from 'types/config';
 import {CoordinatesToJsonType, DownloadedItem, DownloadsMenuOpenEventPayload} from 'types/downloads';
 
@@ -20,6 +18,8 @@ import {
     UPDATE_DOWNLOADS_DROPDOWN_MENU,
     UPDATE_DOWNLOADS_DROPDOWN_MENU_ITEM,
 } from 'common/communication';
+import Config from 'common/config';
+import logger from 'common/log';
 import {
     DOWNLOADS_DROPDOWN_FULL_WIDTH,
     DOWNLOADS_DROPDOWN_MENU_FULL_HEIGHT,
@@ -31,6 +31,8 @@ import {getLocalPreload, getLocalURLString} from 'main/utils';
 import WindowManager from '../windows/windowManager';
 import downloadsManager from 'main/downloadsManager';
 
+const log = logger.withPrefix('DownloadsDropdownMenuView');
+
 export default class DownloadsDropdownMenuView {
     open: boolean;
     view: BrowserView;
@@ -41,12 +43,12 @@ export default class DownloadsDropdownMenuView {
     window: BrowserWindow;
     windowBounds: Electron.Rectangle;
 
-    constructor(window: BrowserWindow, darkMode: boolean) {
+    constructor(window: BrowserWindow) {
         this.open = false;
         this.item = undefined;
         this.coordinates = undefined;
         this.window = window;
-        this.darkMode = darkMode;
+        this.darkMode = Config.darkMode;
 
         this.windowBounds = this.window.getContentBounds();
         this.bounds = this.getBounds(DOWNLOADS_DROPDOWN_MENU_FULL_WIDTH, DOWNLOADS_DROPDOWN_MENU_FULL_HEIGHT);
@@ -77,7 +79,7 @@ export default class DownloadsDropdownMenuView {
     }
 
     updateItem = (event: IpcMainEvent, item: DownloadedItem) => {
-        log.debug('DownloadsDropdownMenuView.updateItem', {item});
+        log.debug('updateItem', {item});
 
         this.item = item;
 
@@ -85,7 +87,7 @@ export default class DownloadsDropdownMenuView {
     }
 
     updateConfig = (event: IpcMainEvent, config: CombinedConfig) => {
-        log.debug('DownloadsDropdownMenuView.updateConfig');
+        log.debug('updateConfig');
 
         this.darkMode = config.darkMode;
         this.updateDownloadsDropdownMenu();
@@ -96,7 +98,7 @@ export default class DownloadsDropdownMenuView {
      * the downloads dropdown at the correct position
      */
     updateWindowBounds = () => {
-        log.debug('DownloadsDropdownMenuView.updateWindowBounds');
+        log.debug('updateWindowBounds');
 
         this.windowBounds = this.window.getContentBounds();
         this.updateDownloadsDropdownMenu();
@@ -104,7 +106,7 @@ export default class DownloadsDropdownMenuView {
     }
 
     updateDownloadsDropdownMenu = () => {
-        log.debug('DownloadsDropdownMenuView.updateDownloadsDropdownMenu');
+        log.debug('updateDownloadsDropdownMenu');
 
         this.view.webContents.send(
             UPDATE_DOWNLOADS_DROPDOWN_MENU,
@@ -116,7 +118,7 @@ export default class DownloadsDropdownMenuView {
     }
 
     handleOpen = (event: IpcMainEvent, payload: DownloadsMenuOpenEventPayload = {} as DownloadsMenuOpenEventPayload) => {
-        log.debug('DownloadsDropdownMenuView.handleOpen', {bounds: this.bounds, payload});
+        log.debug('handleOpen', {bounds: this.bounds, payload});
 
         if (!this.bounds) {
             return;
@@ -124,7 +126,7 @@ export default class DownloadsDropdownMenuView {
 
         const {item, coordinates} = payload;
 
-        log.debug('DownloadsDropdownMenuView.handleOpen', {item, coordinates});
+        log.debug('handleOpen', {item, coordinates});
 
         this.open = true;
         this.coordinates = coordinates;
@@ -137,7 +139,7 @@ export default class DownloadsDropdownMenuView {
     }
 
     handleClose = () => {
-        log.debug('DownloadsDropdownMenuView.handleClose');
+        log.debug('handleClose');
 
         this.open = false;
         this.item = undefined;

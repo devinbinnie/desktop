@@ -10,7 +10,6 @@ import {getFocusAssist} from 'windows-focus-assist';
 import {getDoNotDisturb as getDarwinDoNotDisturb} from 'macos-notification-state';
 
 import {PLAY_SOUND} from 'common/communication';
-import {TAB_MESSAGING} from 'common/tabs/TabView';
 
 import {localizeMessage} from 'main/i18nManager';
 
@@ -55,6 +54,9 @@ jest.mock('electron', () => {
     return {
         app: {
             getAppPath: () => '/path/to/app',
+            dock: {
+                bounce: jest.fn(),
+            },
         },
         Notification: NotificationMock,
         shell: {
@@ -70,9 +72,20 @@ jest.mock('windows-focus-assist', () => ({
 jest.mock('macos-notification-state', () => ({
     getDoNotDisturb: jest.fn(),
 }));
-
+jest.mock('../views/viewManager', () => ({
+    getViewByWebContentsId: () => ({
+        id: 'server_id',
+        tab: {
+            server: {
+                name: 'server_name',
+            },
+        },
+    }),
+}));
+jest.mock('../windows/mainWindow', () => ({
+    get: jest.fn(),
+}));
 jest.mock('../windows/windowManager', () => ({
-    getServerNameByWebContentsId: () => 'server_name',
     sendToRenderer: jest.fn(),
     flashFrame: jest.fn(),
     switchTab: jest.fn(),
@@ -83,6 +96,76 @@ jest.mock('main/i18nManager', () => ({
 }));
 
 describe('main/notifications', () => {
+    // describe('flashFrame', () => {
+    //     const mainWindow = {
+    //         flashFrame: jest.fn(),
+    //     };
+
+    //     beforeEach(() => {
+    //         Config.notifications = {};
+    //         MainWindow.get.mockReturnValue(mainWindow);
+    //     });
+
+    //     afterEach(() => {
+    //         jest.resetAllMocks();
+    //         Config.notifications = {};
+    //     });
+
+    //     it('linux/windows - should not flash frame when config item is not set', () => {
+    //         const originalPlatform = process.platform;
+    //         Object.defineProperty(process, 'platform', {
+    //             value: 'linux',
+    //         });
+    //         windowManager.flashFrame(true);
+    //         Object.defineProperty(process, 'platform', {
+    //             value: originalPlatform,
+    //         });
+    //         expect(mainWindow.flashFrame).not.toBeCalled();
+    //     });
+
+    //     it('linux/windows - should flash frame when config item is set', () => {
+    //         Config.notifications = {
+    //             flashWindow: true,
+    //         };
+    //         const originalPlatform = process.platform;
+    //         Object.defineProperty(process, 'platform', {
+    //             value: 'linux',
+    //         });
+    //         windowManager.flashFrame(true);
+    //         Object.defineProperty(process, 'platform', {
+    //             value: originalPlatform,
+    //         });
+    //         expect(mainWindow.flashFrame).toBeCalledWith(true);
+    //     });
+
+    //     it('mac - should not bounce icon when config item is not set', () => {
+    //         const originalPlatform = process.platform;
+    //         Object.defineProperty(process, 'platform', {
+    //             value: 'darwin',
+    //         });
+    //         windowManager.flashFrame(true);
+    //         Object.defineProperty(process, 'platform', {
+    //             value: originalPlatform,
+    //         });
+    //         expect(app.dock.bounce).not.toBeCalled();
+    //     });
+
+    //     it('mac - should bounce icon when config item is set', () => {
+    //         Config.notifications = {
+    //             bounceIcon: true,
+    //             bounceIconType: 'critical',
+    //         };
+    //         const originalPlatform = process.platform;
+    //         Object.defineProperty(process, 'platform', {
+    //             value: 'darwin',
+    //         });
+    //         windowManager.flashFrame(true);
+    //         Object.defineProperty(process, 'platform', {
+    //             value: originalPlatform,
+    //         });
+    //         expect(app.dock.bounce).toHaveBeenCalledWith('critical');
+    //     });
+    // });
     describe('displayMention', () => {
         beforeEach(() => {
             Notification.isSupported.mockImplementation(() => true);
@@ -220,7 +303,7 @@ describe('main/notifications', () => {
             );
             const mention = mentions.find((m) => m.body === 'mention_click_body');
             mention.value.click();
-            expect(WindowManager.switchTab).toHaveBeenCalledWith('server_name', TAB_MESSAGING);
+            expect(WindowManager.switchTab).toHaveBeenCalledWith('server_id');
         });
     });
 

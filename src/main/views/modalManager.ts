@@ -4,8 +4,6 @@
 import {BrowserWindow, ipcMain} from 'electron';
 import {IpcMainEvent, IpcMainInvokeEvent} from 'electron/main';
 
-import log from 'electron-log';
-
 import {CombinedConfig} from 'types/config';
 
 import {
@@ -19,13 +17,16 @@ import {
     GET_MODAL_UNCLOSEABLE,
     RESIZE_MODAL,
 } from 'common/communication';
-import Config from 'common/config';
+import logger from 'common/log';
 
 import {getAdjustedWindowBoundaries} from 'main/utils';
 import WebContentsEventManager from 'main/views/webContentEvents';
+import ViewManager from 'main/views/viewManager';
 import WindowManager from 'main/windows/windowManager';
 
 import {ModalView} from './modalView';
+
+const log = logger.withPrefix('ModalManager');
 
 export class ModalManager {
     modalQueue: Array<ModalView<any, any>>;
@@ -74,7 +75,7 @@ export class ModalManager {
     }
 
     handleInfoRequest = (event: IpcMainInvokeEvent) => {
-        log.debug('ModalManager.handleInfoRequest');
+        log.debug('handleInfoRequest');
 
         const requestModal = this.findModalByCaller(event);
         if (requestModal) {
@@ -89,7 +90,7 @@ export class ModalManager {
             if (index === 0) {
                 WindowManager.sendToRenderer(MODAL_OPEN);
                 modal.show(undefined, Boolean(withDevTools));
-                WebContentsEventManager.addWebContentsEventListeners(modal.view.webContents, () => Config.teams.concat());
+                WebContentsEventManager.addWebContentsEventListeners(modal.view.webContents);
             } else {
                 WindowManager.sendToRenderer(MODAL_CLOSE);
                 modal.hide();
@@ -98,7 +99,7 @@ export class ModalManager {
     }
 
     handleModalFinished = (mode: 'resolve' | 'reject', event: IpcMainEvent, data: unknown) => {
-        log.debug('ModalManager.handleModalFinished', {mode, data});
+        log.debug('handleModalFinished', {mode, data});
 
         const requestModal = this.findModalByCaller(event);
         if (requestModal) {
@@ -114,7 +115,7 @@ export class ModalManager {
             this.showModal();
         } else {
             WindowManager.sendToRenderer(MODAL_CLOSE);
-            WindowManager.focusBrowserView();
+            ViewManager.focusCurrentView();
         }
     }
 
@@ -131,7 +132,7 @@ export class ModalManager {
     }
 
     handleResizeModal = (event: IpcMainEvent, bounds: Electron.Rectangle) => {
-        log.debug('ModalManager.handleResizeModal', {bounds, modalQueueLength: this.modalQueue.length});
+        log.debug('handleResizeModal', {bounds, modalQueueLength: this.modalQueue.length});
 
         if (this.modalQueue.length) {
             const currentModal = this.modalQueue[0];
@@ -147,7 +148,7 @@ export class ModalManager {
 
     handleEmitConfiguration = (event: IpcMainEvent, config: CombinedConfig) => {
         if (this.modalQueue.length) {
-            log.debug('ModalManager.handleEmitConfiguration');
+            log.debug('handleEmitConfiguration');
         }
 
         this.modalQueue.forEach((modal) => {

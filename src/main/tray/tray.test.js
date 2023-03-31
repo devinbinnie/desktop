@@ -46,7 +46,6 @@ jest.mock('electron', () => {
 jest.mock('main/app/utils', () => ({
     handleUpdateMenuEvent: jest.fn(),
     updateSpellCheckerLocales: jest.fn(),
-    updateServerInfos: jest.fn(),
     setLoggingLevel: jest.fn(),
 }));
 jest.mock('main/app/intercom', () => ({
@@ -62,7 +61,6 @@ jest.mock('main/badge', () => ({
 jest.mock('main/windows/windowManager', () => ({
     handleUpdateConfig: jest.fn(),
     sendToRenderer: jest.fn(),
-    initializeCurrentServerName: jest.fn(),
 }));
 
 describe('main/tray', () => {

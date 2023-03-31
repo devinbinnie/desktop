@@ -6,18 +6,17 @@ import path from 'path';
 import fs from 'fs-extra';
 
 import {app, BrowserWindow, Menu, Rectangle, Session, session, dialog, nativeImage, screen} from 'electron';
-import log, {LevelOption} from 'electron-log';
 
-import {MigrationInfo, TeamWithTabs} from 'types/config';
+import {MigrationInfo} from 'types/config';
 import {RemoteInfo} from 'types/server';
 import {Boundaries} from 'types/utils';
 
 import Config from 'common/config';
+import logger from 'common/log';
 import JsonFileManager from 'common/JsonFileManager';
+import ServerManager from 'common/servers/serverManager';
 import {MattermostServer} from 'common/servers/MattermostServer';
-import {TAB_FOCALBOARD, TAB_MESSAGING, TAB_PLAYBOOKS} from 'common/tabs/TabView';
 import urlUtils from 'common/utils/url';
-import Utils from 'common/utils/util';
 import {APP_MENU_WILL_CLOSE} from 'common/communication';
 
 import updateManager from 'main/autoUpdater';
@@ -27,13 +26,16 @@ import {createMenu as createAppMenu} from 'main/menus/app';
 import {createMenu as createTrayMenu} from 'main/menus/tray';
 import {ServerInfo} from 'main/server/serverInfo';
 import {setTrayMenu} from 'main/tray/tray';
+import ViewManager from 'main/views/viewManager';
 import WindowManager from 'main/windows/windowManager';
+import MainWindow from 'main/windows/mainWindow';
 
 import {mainProtocol} from './initialize';
 
 const assetsDir = path.resolve(app.getAppPath(), 'assets');
 const appIconURL = path.resolve(assetsDir, 'appicon_with_spacing_32.png');
 const appIcon = nativeImage.createFromPath(appIconURL);
+const log = logger.withPrefix('App.Utils');
 
 export function openDeepLink(deeplinkingUrl: string) {
     try {
@@ -44,77 +46,24 @@ export function openDeepLink(deeplinkingUrl: string) {
 }
 
 export function updateSpellCheckerLocales() {
-    if (Config.data?.spellCheckerLocales.length && app.isReady()) {
-        session.defaultSession.setSpellCheckerLanguages(Config.data?.spellCheckerLocales);
+    if (Config.spellCheckerLocales.length && app.isReady()) {
+        session.defaultSession.setSpellCheckerLanguages(Config.spellCheckerLocales);
     }
-}
-
-export function updateServerInfos(teams: TeamWithTabs[]) {
-    log.silly('app.utils.updateServerInfos');
-    const serverInfos: Array<Promise<RemoteInfo | string | undefined>> = [];
-    teams.forEach((team) => {
-        const serverInfo = new ServerInfo(new MattermostServer(team.name, team.url));
-        serverInfos.push(serverInfo.promise);
-    });
-    Promise.all(serverInfos).then((data: Array<RemoteInfo | string | undefined>) => {
-        const teams = Config.teams;
-        let hasUpdates = false;
-        teams.forEach((team) => {
-            hasUpdates = hasUpdates || updateServerURL(data, team);
-            hasUpdates = hasUpdates || openExtraTabs(data, team);
-        });
-        if (hasUpdates) {
-            Config.set('teams', teams);
-        }
-    }).catch((reason: any) => {
-        log.error('Error getting server infos', reason);
-    });
-}
-
-function updateServerURL(data: Array<RemoteInfo | string | undefined>, team: TeamWithTabs) {
-    const remoteInfo = data.find((info) => info && typeof info !== 'string' && info.name === team.name) as RemoteInfo;
-    if (remoteInfo && remoteInfo.siteURL && team.url !== remoteInfo.siteURL) {
-        team.url = remoteInfo.siteURL;
-        return true;
-    }
-    return false;
-}
-
-function openExtraTabs(data: Array<RemoteInfo | string | undefined>, team: TeamWithTabs) {
-    let hasUpdates = false;
-    const remoteInfo = data.find((info) => info && typeof info !== 'string' && info.name === team.name) as RemoteInfo;
-    if (remoteInfo) {
-        team.tabs.forEach((tab) => {
-            if (tab.name !== TAB_MESSAGING && remoteInfo.serverVersion && Utils.isVersionGreaterThanOrEqualTo(remoteInfo.serverVersion, '6.0.0')) {
-                if (tab.name === TAB_PLAYBOOKS && remoteInfo.hasPlaybooks && typeof tab.isOpen === 'undefined') {
-                    log.info(`opening ${team.name}___${tab.name} on hasPlaybooks`);
-                    tab.isOpen = true;
-                    hasUpdates = true;
-                }
-                if (tab.name === TAB_FOCALBOARD && remoteInfo.hasFocalboard && typeof tab.isOpen === 'undefined') {
-                    log.info(`opening ${team.name}___${tab.name} on hasFocalboard`);
-                    tab.isOpen = true;
-                    hasUpdates = true;
-                }
-            }
-        });
-    }
-    return hasUpdates;
 }
 
 export function handleUpdateMenuEvent() {
-    log.debug('Utils.handleUpdateMenuEvent');
+    log.debug('handleUpdateMenuEvent');
 
     const aMenu = createAppMenu(Config, updateManager);
     Menu.setApplicationMenu(aMenu);
     aMenu.addListener('menu-will-close', () => {
-        WindowManager.focusBrowserView();
+        ViewManager.focusCurrentView();
         WindowManager.sendToRenderer(APP_MENU_WILL_CLOSE);
     });
 
     // set up context menu for tray icon
     if (shouldShowTrayIcon()) {
-        const tMenu = createTrayMenu(Config.data!);
+        const tMenu = createTrayMenu();
         setTrayMenu(tMenu);
     }
 }
@@ -140,7 +89,7 @@ export function wasUpdated(lastAppVersion?: string) {
 
 export function clearAppCache() {
     // TODO: clear cache on browserviews, not in the renderer.
-    const mainWindow = WindowManager.getMainWindow();
+    const mainWindow = MainWindow.get();
     if (mainWindow) {
         mainWindow.webContents.session.clearCache().then(mainWindow.reload);
     } else {
@@ -192,7 +141,7 @@ function getValidWindowPosition(state: Rectangle) {
 
 export function resizeScreen(browserWindow: BrowserWindow) {
     function handle() {
-        log.debug('Utils.resizeScreen.handle');
+        log.debug('resizeScreen.handle');
         const position = browserWindow.getPosition();
         const size = browserWindow.getSize();
         const validPosition = getValidWindowPosition({
@@ -213,7 +162,7 @@ export function resizeScreen(browserWindow: BrowserWindow) {
 }
 
 export function flushCookiesStore(session: Session) {
-    log.debug('Utils.flushCookiesStore');
+    log.debug('flushCookiesStore');
     session.cookies.flushStore().catch((err) => {
         log.error(`There was a problem flushing cookies:\n${err}`);
     });
@@ -289,7 +238,17 @@ export function migrateMacAppStore() {
     }
 }
 
-export function setLoggingLevel(level: LevelOption) {
-    log.transports.console.level = level;
-    log.transports.file.level = level;
+export async function updateServerInfos(servers: MattermostServer[]) {
+    const map: Map<string, RemoteInfo> = new Map();
+    await Promise.all(servers.map((srv) => {
+        const serverInfo = new ServerInfo(srv);
+        return serverInfo.fetchRemoteInfo().
+            then((data) => {
+                map.set(srv.id, data);
+            }).
+            catch((error) => {
+                log.warn('Could not get server info for', srv.name, error);
+            });
+    }));
+    ServerManager.updateRemoteInfos(map);
 }

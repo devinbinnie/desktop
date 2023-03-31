@@ -5,10 +5,10 @@ import {app} from 'electron';
 
 import {RELOAD_CONFIGURATION} from 'common/communication';
 import Config from 'common/config';
+import {setLoggingLevel} from 'common/log';
 
 import {handleConfigUpdate} from 'main/app/config';
 import {handleMainWindowIsShown} from 'main/app/intercom';
-import {setLoggingLevel} from 'main/app/utils';
 
 import WindowManager from 'main/windows/windowManager';
 import AutoLauncher from 'main/AutoLauncher';
@@ -28,7 +28,6 @@ jest.mock('electron', () => ({
 jest.mock('main/app/utils', () => ({
     handleUpdateMenuEvent: jest.fn(),
     updateSpellCheckerLocales: jest.fn(),
-    updateServerInfos: jest.fn(),
     setLoggingLevel: jest.fn(),
 }));
 jest.mock('main/app/intercom', () => ({
@@ -44,10 +43,11 @@ jest.mock('main/badge', () => ({
 jest.mock('main/tray/tray', () => ({
     refreshTrayImages: jest.fn(),
 }));
+jest.mock('main/views/loadingScreen', () => ({}));
+jest.mock('main/views/viewManager', () => ({}));
 jest.mock('main/windows/windowManager', () => ({
     handleUpdateConfig: jest.fn(),
     sendToRenderer: jest.fn(),
-    initializeCurrentServerName: jest.fn(),
 }));
 
 describe('main/app/config', () => {

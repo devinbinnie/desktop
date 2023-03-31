@@ -1,17 +1,17 @@
 // Copyright (c) 2016-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
-import log from 'electron-log';
 
 import Joi from 'joi';
 
 import {Args} from 'types/args';
-import {AnyConfig, ConfigV0, ConfigV1, ConfigV2, ConfigV3, TeamWithTabs} from 'types/config';
+import {AnyConfig, ConfigV0, ConfigV1, ConfigV2, ConfigV3, ConfigTeam} from 'types/config';
 import {DownloadedItems} from 'types/downloads';
 import {SavedWindowState} from 'types/mainWindow';
 import {AppState} from 'types/appState';
 import {ComparableCertificate} from 'types/certificate';
 import {PermissionType, TrustedOrigin} from 'types/trustedOrigin';
 
+import logger from 'common/log';
 import {TAB_MESSAGING} from 'common/tabs/TabView';
 import urlUtils from 'common/utils/url';
 
@@ -22,6 +22,8 @@ const defaultWindowWidth = 1000;
 const defaultWindowHeight = 700;
 const minWindowWidth = 400;
 const minWindowHeight = 240;
+
+const log = logger.withPrefix('Validator');
 
 const argsSchema = Joi.object<Args>({
     hidden: Joi.boolean(),
@@ -212,7 +214,7 @@ function cleanTeam<T extends {name: string; url: string}>(team: T) {
     };
 }
 
-function cleanTeamWithTabs(team: TeamWithTabs) {
+function cleanTeamWithTabs(team: ConfigTeam) {
     return {
         ...cleanTeam(team),
         tabs: team.tabs.map((tab) => {

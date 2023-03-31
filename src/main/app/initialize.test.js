@@ -9,6 +9,7 @@ import Config from 'common/config';
 import urlUtils from 'common/utils/url';
 
 import parseArgs from 'main/ParseArgs';
+import MainWindow from 'main/windows/mainWindow';
 import WindowManager from 'main/windows/windowManager';
 
 import {initialize} from './initialize';
@@ -57,6 +58,9 @@ jest.mock('electron', () => ({
         emit: jest.fn(),
         removeHandler: jest.fn(),
         removeListener: jest.fn(),
+    },
+    nativeTheme: {
+        on: jest.fn(),
     },
     screen: {
         on: jest.fn(),
@@ -110,6 +114,7 @@ jest.mock('main/allowProtocolDialog', () => ({
 jest.mock('main/app/app', () => ({}));
 jest.mock('main/app/config', () => ({
     handleConfigUpdate: jest.fn(),
+    handleUpdateTheme: jest.fn(),
 }));
 jest.mock('main/app/intercom', () => ({
     handleMainWindowIsShown: jest.fn(),
@@ -119,10 +124,10 @@ jest.mock('main/app/utils', () => ({
     getDeeplinkingURL: jest.fn(),
     handleUpdateMenuEvent: jest.fn(),
     shouldShowTrayIcon: jest.fn(),
-    updateServerInfos: jest.fn(),
     updateSpellCheckerLocales: jest.fn(),
     wasUpdated: jest.fn(),
     initCookieManager: jest.fn(),
+    updateServerInfos: jest.fn(),
 }));
 jest.mock('main/appState', () => ({
     on: jest.fn(),
@@ -145,6 +150,11 @@ jest.mock('main/notifications', () => ({
     displayDownloadCompleted: jest.fn(),
 }));
 jest.mock('main/ParseArgs', () => jest.fn());
+jest.mock('common/servers/serverManager', () => ({
+    reloadFromConfig: jest.fn(),
+    getAllServers: jest.fn(),
+    on: jest.fn(),
+}));
 jest.mock('main/tray/tray', () => ({
     refreshTrayImages: jest.fn(),
     setupTray: jest.fn(),
@@ -156,13 +166,21 @@ jest.mock('main/UserActivityMonitor', () => ({
     on: jest.fn(),
     startMonitoring: jest.fn(),
 }));
+jest.mock('main/windows/callsWidgetWindow', () => ({
+    isCallsWidget: jest.fn(),
+}));
 jest.mock('main/windows/windowManager', () => ({
-    getMainWindow: jest.fn(),
     showMainWindow: jest.fn(),
-    sendToMattermostViews: jest.fn(),
     sendToRenderer: jest.fn(),
     getServerNameByWebContentsId: jest.fn(),
     getServerURLFromWebContentsId: jest.fn(),
+}));
+jest.mock('main/windows/mainWindow', () => ({
+    get: jest.fn(),
+}));
+jest.mock('main/views/viewManager', () => ({
+    get: jest.fn(),
+    sendToAllViews: jest.fn(),
 }));
 const originalProcess = process;
 describe('main/app/initialize', () => {
@@ -182,7 +200,6 @@ describe('main/app/initialize', () => {
             }
         });
         Config.data = {};
-        Config.teams = [];
         app.whenReady.mockResolvedValue();
         app.requestSingleInstanceLock.mockReturnValue(true);
         app.getPath.mockImplementation((p) => `/basedir/${p}`);
@@ -269,7 +286,7 @@ describe('main/app/initialize', () => {
             expect(callback).toHaveBeenCalledWith(false);
 
             callback = jest.fn();
-            WindowManager.getMainWindow.mockReturnValue({webContents: {id: 1}});
+            MainWindow.get.mockReturnValue({webContents: {id: 1}});
             session.defaultSession.setPermissionRequestHandler.mockImplementation((cb) => {
                 cb({id: 1, getURL: () => 'http://server-1.com'}, 'openExternal', callback);
             });
