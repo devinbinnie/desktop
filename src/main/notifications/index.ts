@@ -24,7 +24,7 @@ export const currentNotifications = new Map();
 
 const log = new Logger('Notifications');
 
-export function displayMention(title: string, body: string, channel: {id: string}, teamId: string, url: string, silent: boolean, webcontents: Electron.WebContents, data: MentionData) {
+export async function displayMention(title: string, body: string, channel: {id: string}, teamId: string, url: string, silent: boolean, webcontents: Electron.WebContents, data: MentionData) {
     log.debug('displayMention', {title, body, channel, teamId, url, silent, data});
 
     if (!Notification.isSupported()) {
@@ -32,7 +32,7 @@ export function displayMention(title: string, body: string, channel: {id: string
         return;
     }
 
-    if (getDoNotDisturb()) {
+    if (await getDoNotDisturb()) {
         return;
     }
 
@@ -82,7 +82,7 @@ export function displayMention(title: string, body: string, channel: {id: string
     mention.show();
 }
 
-export function displayDownloadCompleted(fileName: string, path: string, serverName: string) {
+export async function displayDownloadCompleted(fileName: string, path: string, serverName: string) {
     log.debug('displayDownloadCompleted', {fileName, path, serverName});
 
     if (!Notification.isSupported()) {
@@ -90,7 +90,7 @@ export function displayDownloadCompleted(fileName: string, path: string, serverN
         return;
     }
 
-    if (getDoNotDisturb()) {
+    if (await getDoNotDisturb()) {
         return;
     }
 
@@ -108,12 +108,12 @@ export function displayDownloadCompleted(fileName: string, path: string, serverN
 
 let upgrade: NewVersionNotification;
 
-export function displayUpgrade(version: string, handleUpgrade: () => void): void {
+export async function displayUpgrade(version: string, handleUpgrade: () => void) {
     if (!Notification.isSupported()) {
         log.error('notification not supported');
         return;
     }
-    if (getDoNotDisturb()) {
+    if (await getDoNotDisturb()) {
         return;
     }
 
@@ -129,12 +129,12 @@ export function displayUpgrade(version: string, handleUpgrade: () => void): void
 }
 
 let restartToUpgrade;
-export function displayRestartToUpgrade(version: string, handleUpgrade: () => void): void {
+export async function displayRestartToUpgrade(version: string, handleUpgrade: () => void) {
     if (!Notification.isSupported()) {
         log.error('notification not supported');
         return;
     }
-    if (getDoNotDisturb()) {
+    if (await getDoNotDisturb()) {
         return;
     }
 
@@ -146,7 +146,7 @@ export function displayRestartToUpgrade(version: string, handleUpgrade: () => vo
     restartToUpgrade.show();
 }
 
-function getDoNotDisturb() {
+async function getDoNotDisturb() {
     if (process.platform === 'win32') {
         return getWindowsDoNotDisturb();
     }
