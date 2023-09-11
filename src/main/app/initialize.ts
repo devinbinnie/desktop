@@ -400,7 +400,7 @@ async function initializeAfterAppReady() {
 
     // handle permission requests
     // - approve if a supported permission type and the request comes from the renderer or one of the defined servers
-    defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    defaultSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
         log.debug('permission requested', webContents.getURL(), permission);
 
         // is the requested permission type supported?
@@ -421,7 +421,7 @@ async function initializeAfterAppReady() {
             return;
         }
 
-        const requestingURL = webContents.getURL();
+        const requestingURL = details.securityOrigin ?? details.requestingUrl;
         const serverURL = ViewManager.getViewByWebContentsId(webContents.id)?.view.server.url;
 
         if (!serverURL) {
