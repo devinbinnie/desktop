@@ -15,26 +15,33 @@ const log = new Logger('UserActivityMonitor');
 export class UserActivityMonitor extends EventEmitter {
     isActive: boolean;
     idleTime: number;
-    lastSetActive?: number;
     systemIdleTimeIntervalID: number;
     config: {
         updateFrequencyMs: number;
-        inactiveThresholdMs: number;
-        statusUpdateThresholdMs: number;
+        inactiveThreshold: number;
     };
 
     constructor() {
         super();
 
-        this.isActive = true;
+        this.config = {
+            updateFrequencyMs: 1 * 1000, // eslint-disable-line no-magic-numbers
+            inactiveThreshold: 60 * 5, // eslint-disable-line no-magic-numbers
+        };
+
+        this.isActive = !['idle', 'locked'].includes(powerMonitor.getSystemIdleState(this.config.inactiveThreshold));
         this.idleTime = 0;
         this.systemIdleTimeIntervalID = -1;
 
-        this.config = {
-            updateFrequencyMs: 1 * 1000, // eslint-disable-line no-magic-numbers
-            inactiveThresholdMs: 60 * 1000, // eslint-disable-line no-magic-numbers
-            statusUpdateThresholdMs: 60 * 1000, // eslint-disable-line no-magic-numbers
-        };
+        // Set to Away when the session deactivates or the computer is being locked, slept or shutdown
+        powerMonitor.on('user-did-resign-active', () => this.setActivityState(false));
+        powerMonitor.on('lock-screen', () => this.setActivityState(false));
+        powerMonitor.on('suspend', () => this.setActivityState(false));
+        powerMonitor.on('shutdown', () => this.setActivityState(false));
+
+        // Set to Online when the computer is unlocked or the session reactivates
+        powerMonitor.on('user-did-become-active', () => this.setActivityState(true));
+        powerMonitor.on('unlock-screen', () => this.setActivityState(true));
     }
 
     get userIsActive() {
@@ -50,12 +57,13 @@ export class UserActivityMonitor extends EventEmitter {
    *
    * @param {Object} config - overide internal configuration defaults
    * @param {number} config.updateFrequencyMs - internal update clock frequency for monitoring idleTime
-   * @param {number} config.inactiveThresholdMs - the number of milliseconds that idleTime needs to reach to internally be considered inactive
-   * @param {number} config.statusUpdateThresholdMs - minimum amount of time before sending a new status update
+   * @param {number} config.inactiveThreshold - the number of seconds that idleTime needs to reach to internally be considered inactive
    * @emits {error} emitted when method is called before the app is ready
    * @emits {error} emitted when this method has previously been called but not subsequently stopped
    */
     startMonitoring(config = {}) {
+        log.debug('startMonitoring', config);
+
         if (!app.isReady()) {
             this.emit('error', new Error('UserActivityMonitor.startMonitoring can only be called after app is ready'));
             return;
@@ -93,9 +101,9 @@ export class UserActivityMonitor extends EventEmitter {
    */
     updateIdleTime(idleTime: number) {
         this.idleTime = idleTime;
-        if (idleTime * 1000 > this.config.inactiveThresholdMs) { // eslint-disable-line no-magic-numbers
+        if (idleTime > this.config.inactiveThreshold) { // eslint-disable-line no-magic-numbers
             this.setActivityState(false);
-        } else {
+        } else if (!this.isActive) {
             this.setActivityState(true);
         }
     }
@@ -108,21 +116,15 @@ export class UserActivityMonitor extends EventEmitter {
    * @private
    */
     setActivityState(isActive = false, isSystemEvent = false) {
-        this.isActive = isActive;
-
-        if (isSystemEvent) {
-            this.sendStatusUpdate(true);
+        // Don't update if it's already set
+        if (this.isActive === isActive && !isSystemEvent) {
             return;
         }
 
-        const now = Date.now();
+        log.debug('setActivityState', isActive, isSystemEvent);
 
-        if (isActive && (this.lastSetActive == null || now - this.lastSetActive >= this.config.statusUpdateThresholdMs)) {
-            this.sendStatusUpdate(false);
-            this.lastSetActive = now;
-        } else if (!isActive) {
-            delete this.lastSetActive;
-        }
+        this.isActive = isActive;
+        this.sendStatusUpdate(isSystemEvent);
     }
 
     /**
@@ -132,6 +134,8 @@ export class UserActivityMonitor extends EventEmitter {
    * @private
    */
     sendStatusUpdate(isSystemEvent = false) {
+        log.debug('sendStatusUpdate', isSystemEvent, this.isActive, this.idleTime);
+
         this.emit('status', {
             userIsActive: this.isActive,
             idleTime: this.idleTime,
