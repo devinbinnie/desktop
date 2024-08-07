@@ -91,6 +91,7 @@ import {
     OPEN_WINDOWS_MICROPHONE_PREFERENCES,
     GET_MEDIA_ACCESS_STATUS,
     VIEW_FINISHED_RESIZING,
+    METRICS_UPDATE,
 } from 'common/communication';
 
 console.log('Preload initialized');
@@ -254,3 +255,6 @@ const createKeyDownListener = () => {
 };
 createKeyDownListener();
 
+setInterval(async () => {
+    ipcRenderer.send(METRICS_UPDATE, {cpu: process.getCPUUsage(), memory: await process.getProcessMemoryInfo()});
+}, 5000);

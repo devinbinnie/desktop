@@ -191,3 +191,6 @@ export const GET_MEDIA_ACCESS_STATUS = 'get-media-access-status';
 
 // Legacy code remove signal
 export const LEGACY_OFF = 'legacy-off';
+
+export const METRICS_UPDATE = 'metrics-update';
+export const METRICS_SEND = 'metrics-send';

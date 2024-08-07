@@ -27,6 +27,7 @@ import {
     TAB_BAR_HEIGHT,
 } from 'common/utils/constants';
 import downloadsManager from 'main/downloadsManager';
+import performanceMonitor from 'main/performanceMonitor';
 import {getLocalPreload} from 'main/utils';
 import MainWindow from 'main/windows/mainWindow';
 
@@ -75,7 +76,9 @@ export class DownloadsDropdownMenuView {
             // @ts-ignore
             transparent: true,
         }});
-        this.view.webContents.loadURL('mattermost-desktop://renderer/downloadsDropdownMenu.html');
+        this.view.webContents.loadURL('mattermost-desktop://renderer/downloadsDropdownMenu.html').then(() => {
+            performanceMonitor.registerView(this.view?.webContents.id ?? 0, 'DownloadsDropdownMenuView');
+        });
         MainWindow.get()?.addBrowserView(this.view);
     };
 

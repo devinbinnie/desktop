@@ -43,6 +43,7 @@ import {
     UNREADS_AND_MENTIONS,
     LEGACY_OFF,
     TAB_LOGIN_CHANGED,
+    METRICS_UPDATE,
 } from 'common/communication';
 
 import type {ExternalAPI} from 'types/externalAPI';
@@ -133,6 +134,10 @@ if (process.env.NODE_ENV === 'test') {
         getViewInfoForTest: () => ipcRenderer.invoke(GET_VIEW_INFO_FOR_TEST),
     });
 }
+
+setInterval(async () => {
+    ipcRenderer.send(METRICS_UPDATE, {cpu: process.getCPUUsage(), memory: await process.getProcessMemoryInfo()});
+}, 5000);
 
 /****************************************************************************
  * window/document listeners

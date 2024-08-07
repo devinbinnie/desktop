@@ -34,6 +34,7 @@ import Utils from 'common/utils/util';
 import * as Validator from 'common/Validator';
 import {boundsInfoPath} from 'main/constants';
 import {localizeMessage} from 'main/i18nManager';
+import performanceMonitor from 'main/performanceMonitor';
 
 import type {SavedWindowState} from 'types/mainWindow';
 
@@ -152,7 +153,9 @@ export class MainWindow extends EventEmitter {
         contextMenu.reload();
 
         const localURL = 'mattermost-desktop://renderer/index.html';
-        this.win.loadURL(localURL).catch(
+        this.win.loadURL(localURL).then(() => {
+            performanceMonitor.registerView(this.win?.webContents.id ?? 0, 'Main Window');
+        }).catch(
             (reason) => {
                 log.error('failed to load', reason);
             });
