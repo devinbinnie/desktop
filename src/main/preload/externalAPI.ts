@@ -56,12 +56,21 @@ const createListener: ExternalAPI['createListener'] = (channel: string, listener
     };
 };
 
+let maxusage = 0;
+let ticks = 0;
 setInterval(() => {
     const usage = process.getCPUUsage().percentCPUUsage;
-    if (usage > 1) {
-        console.warn(usage);
+    if (usage > maxusage) {
+        maxusage = usage;
     }
-}, 5000);
+    if (ticks < 50) {
+        ticks++;
+    } else {
+        console.warn(maxusage);
+        ticks = 0;
+        maxusage = 0;
+    }
+}, 100);
 
 const desktopAPI: DesktopAPI = {
 
