@@ -25,6 +25,7 @@ import {RELOAD_INTERVAL, MAX_SERVER_RETRIES, SECOND, MAX_LOADING_SCREEN_SECONDS}
 import {isInternalURL, parseURL} from 'common/utils/url';
 import type {MattermostView} from 'common/views/View';
 import DeveloperMode from 'main/developerMode';
+import performanceMonitor from 'main/performanceMonitor';
 import {getServerAPI} from 'main/server/serverAPI';
 import MainWindow from 'main/windows/mainWindow';
 
@@ -262,6 +263,7 @@ export class MattermostBrowserView extends EventEmitter {
         WebContentsEventManager.removeWebContentsListeners(this.webContentsId);
         AppState.clear(this.id);
         MainWindow.get()?.removeBrowserView(this.browserView);
+        performanceMonitor.unregisterView(this.browserView.webContents.id);
         this.browserView.webContents.close();
 
         this.isVisible = false;
@@ -476,6 +478,7 @@ export class MattermostBrowserView extends EventEmitter {
 
     private loadSuccess = (loadURL: string) => {
         return () => {
+            performanceMonitor.registerView(this.browserView.webContents.id, `${this.view.server.name} - ${this.view.type}`, this.browserView.webContents);
             this.log.verbose(`finished loading ${loadURL}`);
             MainWindow.sendToRenderer(LOAD_SUCCESS, this.id);
             this.maxRetries = MAX_SERVER_RETRIES;

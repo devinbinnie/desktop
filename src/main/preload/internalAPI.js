@@ -93,6 +93,7 @@ import {
     VIEW_FINISHED_RESIZING,
     GET_NONCE,
     IS_DEVELOPER_MODE_ENABLED,
+    METRICS_UPDATE,
 } from 'common/communication';
 
 console.log('Preload initialized');
@@ -258,3 +259,6 @@ const createKeyDownListener = () => {
 };
 createKeyDownListener();
 
+setInterval(async () => {
+    ipcRenderer.send(METRICS_UPDATE, {cpu: process.getCPUUsage(), memory: await process.getProcessMemoryInfo()});
+}, 5000);

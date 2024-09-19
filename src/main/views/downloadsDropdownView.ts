@@ -21,6 +21,7 @@ import Config from 'common/config';
 import {Logger} from 'common/log';
 import {TAB_BAR_HEIGHT, DOWNLOADS_DROPDOWN_WIDTH, DOWNLOADS_DROPDOWN_HEIGHT, DOWNLOADS_DROPDOWN_FULL_WIDTH} from 'common/utils/constants';
 import downloadsManager from 'main/downloadsManager';
+import performanceMonitor from 'main/performanceMonitor';
 import {getLocalPreload} from 'main/utils';
 import MainWindow from 'main/windows/mainWindow';
 
@@ -65,7 +66,9 @@ export class DownloadsDropdownView {
             transparent: true,
         }});
 
-        this.view.webContents.loadURL('mattermost-desktop://renderer/downloadsDropdown.html');
+        this.view.webContents.loadURL('mattermost-desktop://renderer/downloadsDropdown.html').then(() => {
+            performanceMonitor.registerView(this.view?.webContents.id ?? 0, 'DownloadsDropdownView');
+        });
         MainWindow.get()?.addBrowserView(this.view);
     };
 

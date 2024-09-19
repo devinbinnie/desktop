@@ -50,6 +50,7 @@ import i18nManager from 'main/i18nManager';
 import NonceManager from 'main/nonceManager';
 import {getDoNotDisturb} from 'main/notifications';
 import parseArgs from 'main/ParseArgs';
+import PerformanceMonitor from 'main/performanceMonitor';
 import PermissionsManager from 'main/permissionsManager';
 import Tray from 'main/tray/tray';
 import TrustedOriginsStore from 'main/trustedOrigins';
@@ -448,6 +449,7 @@ async function initializeAfterAppReady() {
     AppVersionManager.lastAppVersion = app.getVersion();
 
     handleMainWindowIsShown();
+    PerformanceMonitor.start();
 }
 
 function onUserActivityStatus(status: {

@@ -48,6 +48,7 @@ import {TAB_MESSAGING} from 'common/views/View';
 import {flushCookiesStore} from 'main/app/utils';
 import DeveloperMode from 'main/developerMode';
 import {localizeMessage} from 'main/i18nManager';
+import performanceMonitor from 'main/performanceMonitor';
 import PermissionsManager from 'main/permissionsManager';
 import MainWindow from 'main/windows/mainWindow';
 
@@ -373,7 +374,11 @@ export class ViewManager {
                     transparent: true,
                 }});
             const localURL = `mattermost-desktop://renderer/urlView.html?url=${encodeURIComponent(urlString)}`;
-            urlView.webContents.loadURL(localURL);
+            urlView.webContents.loadURL(localURL).then(() => {
+                performanceMonitor.registerView(urlView.webContents.id, 'URLView');
+            }).catch((error) => {
+                log.error(error);
+            });
             MainWindow.get()?.addBrowserView(urlView);
             const boundaries = this.views.get(this.currentView || '')?.getBounds() ?? MainWindow.getBounds();
 
@@ -385,6 +390,7 @@ export class ViewManager {
                     log.error('Failed to remove URL view', e);
                 }
 
+                performanceMonitor.unregisterView(urlView.webContents.id);
                 urlView.webContents.close();
             };
 
