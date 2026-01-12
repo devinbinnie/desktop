@@ -295,6 +295,8 @@
   "renderer.components.settingsPage.updates.automatic": "Automatically check for updates",
   "renderer.components.settingsPage.updates.automatic.description": "If enabled, updates to the Desktop App will download automatically and you will be notified when ready to install.",
   "renderer.components.settingsPage.updates.checkNow": "Check for Updates Now",
+  "renderer.components.settingsPage.useNativeTitleBar": "Use native title bar",
+  "renderer.components.settingsPage.useNativeTitleBar.description": "If enabled, the app will use the native title bar",
   "renderer.components.settingsPage.viewLimit": "Maximum number of open views",
   "renderer.components.settingsPage.viewLimit.description": "The maximum number of tabs and windows combined that can be open simultaneously in the application per server. Set to blank for no limit.",
   "renderer.components.showCertificateModal.algorithm": "Algorithm",

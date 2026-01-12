@@ -214,6 +214,7 @@ describe('common/Validator', () => {
             version: 4,
             viewLimit: 15,
             themeSyncing: true,
+            useNativeTitleBar: false,
         };
 
         it('should validate v4 config data', () => {
